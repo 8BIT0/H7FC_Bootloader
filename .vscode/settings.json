@@ -1,0 +1,23 @@
+{
+    "files.associations": {
+        "task_control.h": "c",
+        "srv_oscommon.h": "c",
+        "storage.h": "c",
+        "srv_datahub.h": "c",
+        "stdbool.h": "c",
+        "bsp_flash.h": "c",
+        "stdint.h": "c",
+        "srv_actuator.h": "c",
+        "hw_def.h": "c",
+        "bsp_gpio.h": "c",
+        "fchw_config.h": "c",
+        "srv_fileadapter.h": "c",
+        "srv_comproto.h": "c",
+        "cmsis_os.h": "c",
+        "algorithm": "c",
+        "srv_upgrade.h": "c",
+        "task_bootctl.h": "c",
+        "bsp_dma.h": "c",
+        "kernel.h": "c"
+    }
+}
