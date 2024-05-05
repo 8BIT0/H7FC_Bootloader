@@ -42,15 +42,23 @@ typedef struct
     bool init_state;
 
     BootPortProtoObj_TypeDef port_obj;
+    uint8_t avaliable_port_num;
 } BootCtlMonitor_TypeDef;
 
 /* internal vriable */
 static BootCtlMonitor_TypeDef BootMonitor = {
     .init_state = false,
+    .avaliable_port_num = 0,
     .port_obj = {
         .addr = 0,
         .type = BootPort_None,
     },
+};
+
+BspUARTObj_TypeDef BspUartObj = {
+    // .baudrate = ,
+    // .cust_data_addr = ,
+    // .
 };
 
 void TaskBootCtl_Init(uint32_t period)
@@ -58,7 +66,11 @@ void TaskBootCtl_Init(uint32_t period)
     SrvUpgrade.init(RunningStage, 500);
 
     /* port init */
-    BspUSB_VCP.init(&BootMonitor.port_obj);
+    if (BspUSB_VCP.init(&BootMonitor.port_obj))
+        BootMonitor.avaliable_port_num ++;
+
+    if (BspUart.init(&BspUartObj))
+        BootMonitor.avaliable_port_num ++;
 
     /* get base info from storage module */
     BootMonitor.period = period;
