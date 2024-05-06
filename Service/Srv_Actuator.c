@@ -69,7 +69,6 @@ SrvActuatorPipeData_TypeDef Proto_Actuator_Data;
 /* internal function */
 static void SrcActuator_Get_ChannelRemap(void);
 static bool SrvActuator_Config_MotoSpinDir(void);
-static void SrvActuator_PipeData(void);
 static bool SrvActuator_QuadDrone_MotoMixControl(uint16_t *rc_ctl);
 
 /* external function */
@@ -266,7 +265,6 @@ static bool SrvActuator_Lock(void)
         }
     }
 
-    SrvActuator_PipeData();
     return true;
 }
 
@@ -284,8 +282,6 @@ static void SrvActuator_MotoControl(uint16_t *p_val)
     default:
         return;
     }
-
-    SrvActuator_PipeData();
 }
 
 static void SrvActuator_ServoControl(uint8_t index, uint16_t val)

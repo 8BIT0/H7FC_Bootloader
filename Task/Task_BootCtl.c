@@ -141,20 +141,36 @@ void TaskBootCtl_Init(uint32_t period)
         BootMonitor.avaliable_port_num ++;
 
         /* create tx semaphore */
-        osSemaphoreDef(VCPPort_Tx);
-        BootMonitor.VcpPort_Obj;
+        osSemaphoreDef(VcpPort_Tx);
+        BootMonitor.VcpPort_Obj.p_tx_semphr = osSemaphoreCreate(osSemaphore(VcpPort_Tx), 128);
+
+        BootMonitor.avaliable_port_num ++;
+        if (BootMonitor.VcpPort_Obj.p_tx_semphr == NULL)
+        {
+            BootMonitor.avaliable_port_num --;
+            BootMonitor.VcpPort_Obj.init_state = false;
+        }
     }
     
     /* radio port init */
     if (BspUart.init(&RadioPortObj))
     {
+        /* set port init parameter */
+
         BootMonitor.avaliable_port_num ++;
         BspUart.set_tx_callback(&RadioPortObj, TaskBootCtl_UartPort_Tx_Callback);
         BspUart.set_rx_callback(&RadioPortObj, TaskBootCtl_UartPort_Rx_Callback);
 
         /* create tx semaphore */
         osSemaphoreDef(RadioPort_Tx);
-        BootMonitor.RadioPort_Obj;
+        BootMonitor.RadioPort_Obj.p_tx_semphr = osSemaphoreCreate(osSemaphore(RadioPort_Tx), 128);
+
+        BootMonitor.avaliable_port_num ++;
+        if (BootMonitor.RadioPort_Obj.p_tx_semphr == NULL)
+        {
+            BootMonitor.avaliable_port_num --;
+            BootMonitor.RadioPort_Obj.init_state = false;
+        }
     }
 
     /* get base info from storage module */

@@ -174,7 +174,7 @@ static SrvComProto_Msg_StreamIn_TypeDef SrvComProto_MavMsg_Input_DecodeAll(SrvCo
     mavlink_message_t mav_msg;
     mavlink_status_t mav_sta;
     volatile uint8_t mav_decode = 0;
-    bool decode_state = false;
+    // bool decode_state = false;
     
     memset(&stream_in, 0, sizeof(SrvComProto_Msg_StreamIn_TypeDef));
 
