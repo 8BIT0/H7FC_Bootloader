@@ -64,6 +64,7 @@ typedef struct
 {
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
     void (*set_send_callback)(SrvUpgrade_Send_Callback callback);
+    void (*polling)(void);
 } SrvUpgrade_TypeDef;
 
 extern SrvUpgrade_TypeDef SrvUpgrade;

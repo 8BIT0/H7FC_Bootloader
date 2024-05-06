@@ -63,11 +63,13 @@ static SrvUpgradeMonitor_TypeDef Monitor;
 /* external function */
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
 static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback);
+static void SrvUpgrade_StatePolling(void);
 
 /* external function */
 SrvUpgrade_TypeDef SrvUpgrade = {
     .init = SrvUpgrade_Init,
     .set_send_callback = SrvUpgrade_Set_Send,
+    .polling = SrvUpgrade_StatePolling,
 };
 
 static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback)

@@ -27,7 +27,6 @@ typedef enum
 typedef struct
 {
     uint32_t period;
-    uint32_t jump_time;
     Boot_UpdateType_List update_type;
 
     bool init_state;
@@ -43,7 +42,7 @@ static BootCtlMonitor_TypeDef BootMonitor = {
 
 void TaskBootCtl_Init(uint32_t period)
 {
-    SrvUpgrade.init(RunningStage, 500);
+    SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
 
     /* get base info from storage module */
     BootMonitor.period = period;
@@ -55,16 +54,12 @@ void TaskBootCtl_Core(const void *argument)
 {
     uint32_t pre_time = SrvOsCommon.get_os_ms();
     uint32_t sys_time = 0;
-    BootMonitor.jump_time = pre_time + JUMP_WINDOW_TIME;
 
     while(1)
     {
         sys_time = SrvOsCommon.get_os_ms();
         
-        if (sys_time >= BootMonitor.jump_time)
-        {
-            /* jump to app */
-        }
+        SrvUpgrade.polling();
 
         SrvOsCommon.precise_delay(&pre_time, BootMonitor.period);
     }

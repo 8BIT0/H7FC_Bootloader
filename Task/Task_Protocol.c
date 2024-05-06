@@ -255,6 +255,8 @@ static void TaskFrameCTL_RadioPort_Init(FrameCTL_PortMonitor_TypeDef *monitor)
                 memset(&monitor->Uart_Port[i].ByPass_Mode, 0, sizeof(Port_Bypass_TypeDef));
                 
                 monitor->Uart_Port[i].RecObj.type = Port_Uart;
+                monitor->Uart_Port[i].RecObj.port_index = i;
+                
                 monitor->Uart_Port[i].Obj->cust_data_addr = (uint32_t)&(monitor->Uart_Port[i].RecObj);
             
                 /* create semaphore for send */

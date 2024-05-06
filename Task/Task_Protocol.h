@@ -40,6 +40,7 @@ typedef enum
 typedef struct
 {
     FrameCTL_PortType_List type;
+    uint8_t port_index;
     uint32_t PortObj_addr;
     uint32_t time_stamp;
 } FrameCTL_PortProtoObj_TypeDef;
