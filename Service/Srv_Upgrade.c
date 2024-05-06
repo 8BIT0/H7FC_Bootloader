@@ -136,6 +136,9 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     }
     else
         Monitor.jump_time += DEFAULT_WINDOW_SIZE;
+
+    /* show jump time stamp */
+    
     return false;
 }
 
