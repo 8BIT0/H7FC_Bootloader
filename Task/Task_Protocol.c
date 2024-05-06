@@ -3,6 +3,13 @@
 #include "HW_Def.h"
 #include "Srv_ComProto.h"
 #include "Srv_FileAdapter.h"
+#if defined AT32F435RGT7
+#include "../HW_Lib/AT32F435/HW_Def.h"
+#elif defined STM32H743xx
+#include "../HW_Lib/STM32H7/HW_Def.h"
+#else
+#include "../HW_Lib/AT32F435/HW_Def.h"
+#endif
 
 #define PROTO_STREAM_BUF_SIZE 512
 
@@ -484,26 +491,7 @@ static void TaskFrameCTL_USB_VCP_Connect_Callback(uint32_t Obj_addr, uint32_t *t
             *time_stamp = SrvOsCommon.get_os_ms();
     }
 }
-
-static void TaskFrameCTL_CLI_Proc(void)
-{
-    uint16_t rx_stream_size = 0;
-    bool arm_state;
-    Shell *shell_obj = Shell_GetInstence();
-
-    /* check CLI stream */
-    if(shell_obj && CLI_Monitor.p_rx_stream->p_buf && CLI_Monitor.p_rx_stream->size)
-    {
-        rx_stream_size = CLI_Monitor.p_rx_stream->size;
-
-        for(uint16_t i = 0; i < rx_stream_size; i++)
-        {
-            shellHandler(shell_obj, CLI_Monitor.p_rx_stream->p_buf[i]);
-            CLI_Monitor.p_rx_stream->p_buf[i] = 0;
-            CLI_Monitor.p_rx_stream->size --;
-        }
-    }
-}
+/************************************** USB Only Callback section ********************************************/
 
 static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_data, uint16_t size)
 {
@@ -528,6 +516,26 @@ static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_
 
 
 /***************************************** CLI Section ***********************************************/
+static void TaskFrameCTL_CLI_Proc(void)
+{
+    uint16_t rx_stream_size = 0;
+    bool arm_state;
+    Shell *shell_obj = Shell_GetInstence();
+
+    /* check CLI stream */
+    if(shell_obj && CLI_Monitor.p_rx_stream->p_buf && CLI_Monitor.p_rx_stream->size)
+    {
+        rx_stream_size = CLI_Monitor.p_rx_stream->size;
+
+        for(uint16_t i = 0; i < rx_stream_size; i++)
+        {
+            shellHandler(shell_obj, CLI_Monitor.p_rx_stream->p_buf[i]);
+            CLI_Monitor.p_rx_stream->p_buf[i] = 0;
+            CLI_Monitor.p_rx_stream->size --;
+        }
+    }
+}
+
 static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size)
 {
     if(p_data && size)

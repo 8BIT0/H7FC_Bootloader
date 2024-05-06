@@ -27,13 +27,19 @@ typedef enum
 {
     Port_USB = 0,
     Port_Uart,
-    Port_CAN,
 } FrameCTL_PortType_List;
+
+typedef enum
+{
+    Port_Bypass_None = 0,
+    Port_Bypass_RxOnly,
+    Port_Bypass_TxOnly,
+    Port_Bypass_BothDir,
+} Bypass_TypeList;
 
 typedef struct
 {
     FrameCTL_PortType_List type;
-    uint8_t port_index;
     uint32_t PortObj_addr;
     uint32_t time_stamp;
 } FrameCTL_PortProtoObj_TypeDef;
