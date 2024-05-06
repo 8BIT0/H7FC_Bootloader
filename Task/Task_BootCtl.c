@@ -16,9 +16,10 @@
 #define RADIO_BUFF_SIZE 512
 static uint8_t RadioRxBuff[RADIO_BUFF_SIZE];
 
-#define VCP_ATTACH_TIMEOUT  100 /* 100ms */
-#define BOOTCTL_MIN_PERIOD  50  /* 50ms 20Hz */
-#define JUMP_WINDOW_TIME    500 /* default window time */
+#define SEMAPHORE_WAIT_TIMEOUT  10
+#define VCP_ATTACH_TIMEOUT      100 /* 100ms */
+#define BOOTCTL_MIN_PERIOD      50  /* 50ms 20Hz */
+#define JUMP_WINDOW_TIME        500 /* default window time */
 
 #define RunningStage On_Boot
 
@@ -131,7 +132,6 @@ BspUARTObj_TypeDef RadioPortObj = {
 };
 
 /* internal function */
-static void TaskBootCtl_Info_Output(uint8_t *p_data, uint16_t len);
 static void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
 static void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
 
@@ -224,30 +224,26 @@ static void TaskBootCtl_Send(uint8_t *p_buf, uint16_t len)
     if (p_buf && len)
     {
         /* send through VCP */
-        if (BspUSB_VCP.check_connect(sys_time, VCP_ATTACH_TIMEOUT))
+        if (BootMonitor.VcpPort_Obj.init_state && \
+            BootMonitor.VcpPort_Obj.p_tx_semphr && \
+            BspUSB_VCP.check_connect(sys_time, VCP_ATTACH_TIMEOUT) && \
+            BspUSB_VCP.send)
         {
             BspUSB_VCP.send(p_buf, len);
 
             /* wait semaphore */
+            osSemaphoreWait(BootMonitor.VcpPort_Obj.p_tx_semphr, SEMAPHORE_WAIT_TIMEOUT);
         }
 
         /* send through default uart port */
-
-    }
-}
-
-static void TaskBootCtl_Info_Output(uint8_t *p_data, uint16_t len)
-{
-    if (p_data && len)
-    {
-        if (BootMonitor.VcpPort_Obj.init_state)
+        if (BootMonitor.RadioPort_Obj.init_state && \
+            BootMonitor.RadioPort_Obj.p_tx_semphr && \
+            BspUart.send)
         {
-            /* also check vcp connect state */
-        }
+            BspUart.send(&BootMonitor.RadioPort_Obj, p_buf, len);
 
-        if (BootMonitor.RadioPort_Obj.init_state)
-        {
-
+            /* wait semaphore */
+            osSemaphoreWait(BootMonitor.RadioPort_Obj.p_tx_semphr, SEMAPHORE_WAIT_TIMEOUT);
         }
     }
 }
