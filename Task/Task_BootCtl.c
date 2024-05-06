@@ -62,18 +62,6 @@ typedef struct
 
 typedef struct
 {
-    uint32_t period;
-    uint32_t jump_time;
-    Boot_UpdateType_List update_type;
-
-    bool init_state;
-
-    BootPortProtoObj_TypeDef port_obj;
-    uint8_t avaliable_port_num;
-} BootCtlMonitor_TypeDef;
-
-typedef struct
-{
     bool init_state;
     BootPortProtoObj_TypeDef RecObj;
     Port_Bypass_TypeDef ByPass_Mode;
@@ -84,14 +72,35 @@ typedef struct
     BspUARTObj_TypeDef *Obj;
 } BootCtl_UartPortMonitor_TypeDef;
 
+typedef struct
+{
+    bool init_state;
+    BootPortProtoObj_TypeDef RecObj;
+    Port_Bypass_TypeDef ByPass_Mode;
+
+    osSemaphoreId p_tx_semphr;
+    uint32_t tx_semphr_rls_err;
+
+    BspUSB_VCP_TxStatistic_TypeDef tx_statistic;
+} BootCtl_VcpPortMonitor_TypeDef;
+
+typedef struct
+{
+    uint32_t period;
+    uint32_t jump_time;
+    Boot_UpdateType_List update_type;
+
+    bool init_state;
+
+    BootCtl_VcpPortMonitor_TypeDef VcpPort_Obj;
+    BootCtl_UartPortMonitor_TypeDef RadioPort_Obj;
+    uint8_t avaliable_port_num;
+} BootCtlMonitor_TypeDef;
+
 /* internal vriable */
 static BootCtlMonitor_TypeDef BootMonitor = {
     .init_state = false,
     .avaliable_port_num = 0,
-    .port_obj = {
-        .Obj_addr = 0,
-        .type = BootPort_None,
-    },
 };
 
 BspUARTObj_TypeDef RadioPortObj = {
@@ -126,15 +135,26 @@ void TaskBootCtl_Init(uint32_t period)
 {
     SrvUpgrade.init(RunningStage, 500);
 
-    /* port init */
-    if (BspUSB_VCP.init(&BootMonitor.port_obj))
+    /* vcp port init */
+    if (BspUSB_VCP.init(&BootMonitor.VcpPort_Obj))
+    {
         BootMonitor.avaliable_port_num ++;
 
+        /* create tx semaphore */
+        osSemaphoreDef(VCPPort_Tx);
+        BootMonitor.VcpPort_Obj;
+    }
+    
+    /* radio port init */
     if (BspUart.init(&RadioPortObj))
     {
         BootMonitor.avaliable_port_num ++;
         BspUart.set_tx_callback(&RadioPortObj, TaskBootCtl_UartPort_Tx_Callback);
         BspUart.set_rx_callback(&RadioPortObj, TaskBootCtl_UartPort_Rx_Callback);
+
+        /* create tx semaphore */
+        osSemaphoreDef(RadioPort_Tx);
+        BootMonitor.RadioPort_Obj;
     }
 
     /* get base info from storage module */
