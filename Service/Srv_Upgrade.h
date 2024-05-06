@@ -16,8 +16,6 @@
 #define APP_Address_Base
 #define Default_App_Address
 
-typedef void (*SrvUpgrade_Send_Callback)(uint8_t *p_data, uint16_t len);
-
 typedef enum
 {
     On_Boot = 0,
@@ -65,7 +63,6 @@ typedef struct
 typedef struct
 {
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
-    void (*set_send_callback)(SrvUpgrade_Send_Callback callback);
     void (*polling)(void);
     void (*get_info)(uint8_t *p_info, uint16_t *len);
 } SrvUpgrade_TypeDef;

@@ -37,8 +37,6 @@ typedef struct
     SrvUpgrade_ParamValid_List ParamStatus;
     UpgradeInfo_TypeDef Info;
     
-    SrvUpgrade_Send_Callback send;
-
     uint32_t firmware_addr_s;   /* Application or Module firmware storaged address start pos */
     uint32_t firmware_addr_e;   /* Application or Module firmware storaged address end pos */
     uint32_t firmware_size;     /* total firmware size */
@@ -63,22 +61,15 @@ static void SrvUpgrade_Collect_Info(const char *format, ...);
 
 /* external function */
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
-static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback);
 static void SrvUpgrade_StatePolling(void);
 static void SrvUpgrade_Get_Info(uint8_t *p_info, uint16_t *len);
 
 /* external function */
 SrvUpgrade_TypeDef SrvUpgrade = {
     .init = SrvUpgrade_Init,
-    .set_send_callback = SrvUpgrade_Set_Send,
     .polling = SrvUpgrade_StatePolling,
     .get_info = SrvUpgrade_Get_Info,
 };
-
-static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback)
-{
-    Monitor.send = callback;
-}
 
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size)
 {
