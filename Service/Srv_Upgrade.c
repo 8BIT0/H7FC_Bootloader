@@ -77,10 +77,21 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
 
     /* get data from storage */
     memset(&Monitor.Info, 0, sizeof(UpgradeInfo_TypeDef));
+    
+    SrvUpgrade_Collect_Info("[SrvUpgrade Init]\r\n");
+    SrvUpgrade_Collect_Info("\tOn Boot Stage\r\n");
+    SrvUpgrade_Collect_Info("\tReading [Boot Info] from storage\r\n");
+    
     search_out = Storage.search(External_Flash, Para_Boot, "Boot Info");
+    SrvUpgrade_Collect_Info("\t\t---[Boot Info] Addr  -> %d\r\n", search_out.item_addr);
+    SrvUpgrade_Collect_Info("\t\t---[Boot Info] index -> %d\r\n", search_out.item_index);
+    
+    Monitor.ParamStatus = UpgradeParam_InValid;
     if ((search_out.item_addr != 0) && \
         (Storage.get(External_Flash, Para_Boot, search_out.item, (uint8_t *)&Monitor.Info, sizeof(UpgradeInfo_TypeDef)) == Storage_Error_None))
     {
+        /* show boot item info */
+
         Monitor.ParamStatus = UpgradeParam_None;
         switch ((uint8_t)stage)
         {
@@ -103,6 +114,21 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
         return true;
     }
     
+    if (Monitor.ParamStatus == UpgradeParam_InValid)
+    {
+        SrvUpgrade_Collect_Info("\tBoot Parameter Invalid\r\n");
+    }
+    else if (Monitor.ParamStatus == UpgradeParam_Valid)
+    {
+        SrvUpgrade_Collect_Info("\tBoot Parameter Valid\r\n");
+
+        if (Monitor.Info.reg.bit.App)
+            SrvUpgrade_Collect_Info("\t\t---[App] Got New Firmware\r\n");
+
+        if (Monitor.Info.reg.bit.Module)
+            SrvUpgrade_Collect_Info("\t\t---[External Module] Got New Firmware\r\n");
+    }
+
     Monitor.jump_time = SrvOsCommon.get_os_ms();
     if (window_size >= DEFAULT_WINDOW_SIZE)
     {
@@ -110,7 +136,6 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     }
     else
         Monitor.jump_time += DEFAULT_WINDOW_SIZE;
-    Monitor.ParamStatus = UpgradeParam_InValid;
     return false;
 }
 
