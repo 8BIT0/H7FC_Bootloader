@@ -66,7 +66,15 @@ typedef struct
 
 typedef struct
 {
+    bool enable;
+    Bypass_TypeList mode;
+    uint8_t *bypass_src;
+} Port_Bypass_TypeDef;
+
+typedef struct
+{
     bool init_state;
+    Port_Bypass_TypeDef ByPass_Mode;
     FrameCTL_PortProtoObj_TypeDef RecObj;
     
     osSemaphoreId p_tx_semphr;
@@ -77,22 +85,14 @@ typedef struct
 
 typedef struct
 {
-    bool init_state;
-    FrameCTL_PortProtoObj_TypeDef RecObj;
-} FrameCTL_CanPortMonitor_TypeDef;
-
-typedef struct
-{
     bool init;
     bool vcp_connect_state;
     uint8_t uart_port_num;
-    uint8_t can_port_num;
 
     void *Cur_Tuning_Port;
 
     FrameCTL_VCPPortMonitor_TypeDef VCP_Port;
     FrameCTL_UartPortMonitor_TypeDef *Uart_Port;
-    FrameCTL_CanPortMonitor_TypeDef *Can_Port;
 } FrameCTL_PortMonitor_TypeDef;
 
 typedef struct

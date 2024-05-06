@@ -33,6 +33,8 @@ typedef enum
 
 typedef struct
 {
+    bool init_state;
+
     SrvUpgrade_CodeStage_List CodeStage;
     SrvUpgrade_ParamValid_List ParamStatus;
     UpgradeInfo_TypeDef Info;
@@ -51,10 +53,14 @@ typedef struct
 
     uint8_t LogOut_Info[1024];
     uint16_t LogOut_Info_size;
+
+    SrvUpgrade_Send_Callback send;
 } SrvUpgradeMonitor_TypeDef;
 
 /* internal virable */
-static SrvUpgradeMonitor_TypeDef Monitor;
+static SrvUpgradeMonitor_TypeDef Monitor = {
+    .init_state = false,
+};
 
 /* internal function */
 static void SrvUpgrade_Collect_Info(const char *format, ...);
@@ -62,14 +68,19 @@ static void SrvUpgrade_Collect_Info(const char *format, ...);
 /* external function */
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
 static void SrvUpgrade_StatePolling(void);
-static void SrvUpgrade_Get_Info(uint8_t *p_info, uint16_t *len);
+static void SrvUpgrade_Set_SendCallback(SrvUpgrade_Send_Callback callback);
 
 /* external function */
 SrvUpgrade_TypeDef SrvUpgrade = {
     .init = SrvUpgrade_Init,
     .polling = SrvUpgrade_StatePolling,
-    .get_info = SrvUpgrade_Get_Info,
+    .set_send_callback = SrvUpgrade_Set_SendCallback,
 };
+
+static void SrvUpgrade_Set_SendCallback(SrvUpgrade_Send_Callback callback)
+{
+    Monitor.send = callback;
+}
 
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size)
 {
@@ -138,7 +149,8 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
         Monitor.jump_time += DEFAULT_WINDOW_SIZE;
 
     /* show jump time stamp */
-    
+    Monitor.init_state = true;
+
     return false;
 }
 
@@ -165,18 +177,6 @@ static void SrvUpgrade_StatePolling(void)
     else
     {
 
-    }
-}
-
-static void SrvUpgrade_Get_Info(uint8_t *p_info, uint16_t *len)
-{
-    if (p_info && len && (*len >= Monitor.LogOut_Info_size))
-    {
-        memcpy(p_info, Monitor.LogOut_Info, Monitor.LogOut_Info_size);
-        *len = Monitor.LogOut_Info_size;
-
-        memset(Monitor.LogOut_Info, 0, Monitor.LogOut_Info_size);
-        Monitor.LogOut_Info_size = 0;
     }
 }
 
@@ -243,6 +243,14 @@ static void SrvUpgrade_Collect_Info(const char *format, ...)
         send_len = vsnprintf((char *)Monitor.LogOut_Info, buf_remain, format, args);
         if (send_len > 0)
             Monitor.LogOut_Info_size += send_len;
+
+        if (Monitor.send)
+        {
+            Monitor.send(Monitor.LogOut_Info, Monitor.LogOut_Info_size);
+
+            memset(Monitor.LogOut_Info, 0, Monitor.LogOut_Info_size);
+            Monitor.LogOut_Info_size = 0;
+        }
 
         va_end(args);
     }
