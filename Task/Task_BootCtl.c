@@ -95,6 +95,9 @@ typedef struct
     BootCtl_VcpPortMonitor_TypeDef VcpPort_Obj;
     BootCtl_UartPortMonitor_TypeDef RadioPort_Obj;
     uint8_t avaliable_port_num;
+
+    uint8_t Info[1024];
+    uint16_t info_size;
 } BootCtlMonitor_TypeDef;
 
 /* internal vriable */
@@ -128,8 +131,9 @@ BspUARTObj_TypeDef RadioPortObj = {
 };
 
 /* internal function */
-void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
-void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
+static void TaskBootCtl_Info_Output(uint8_t *p_data, uint16_t len);
+static void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
+static void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size);
 
 void TaskBootCtl_Init(uint32_t period)
 {
@@ -138,7 +142,7 @@ void TaskBootCtl_Init(uint32_t period)
     /* vcp port init */
     if (BspUSB_VCP.init(&BootMonitor.VcpPort_Obj))
     {
-        BootMonitor.avaliable_port_num ++;
+        BootMonitor.VcpPort_Obj.init_state = true;
 
         /* create tx semaphore */
         osSemaphoreDef(VcpPort_Tx);
@@ -151,12 +155,14 @@ void TaskBootCtl_Init(uint32_t period)
             BootMonitor.VcpPort_Obj.init_state = false;
         }
     }
-    
+
     /* radio port init */
     if (BspUart.init(&RadioPortObj))
     {
         /* set port init parameter */
-
+        BootMonitor.RadioPort_Obj.Obj = &RadioPortObj;
+        BootMonitor.RadioPort_Obj.init_state = true;
+        
         BootMonitor.avaliable_port_num ++;
         BspUart.set_tx_callback(&RadioPortObj, TaskBootCtl_UartPort_Tx_Callback);
         BspUart.set_rx_callback(&RadioPortObj, TaskBootCtl_UartPort_Rx_Callback);
@@ -230,8 +236,24 @@ static void TaskBootCtl_Send(uint8_t *p_buf, uint16_t len)
     }
 }
 
+static void TaskBootCtl_Info_Output(uint8_t *p_data, uint16_t len)
+{
+    if (p_data && len)
+    {
+        if (BootMonitor.VcpPort_Obj.init_state)
+        {
+            /* also check vcp connect state */
+        }
+
+        if (BootMonitor.RadioPort_Obj.init_state)
+        {
+
+        }
+    }
+}
+
 /* Radio Port Callback */
-void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
+static void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
 {
     if (cust_data_addr && buff && size)
     {
@@ -239,7 +261,7 @@ void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, ui
     }
 }
 
-void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
+static void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
 {
     if (cust_data_addr && buff && size)
     {
