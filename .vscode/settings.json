@@ -18,6 +18,7 @@
         "srv_upgrade.h": "c",
         "task_bootctl.h": "c",
         "bsp_dma.h": "c",
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "bsp_uart.h": "c"
     }
 }

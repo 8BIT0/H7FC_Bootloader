@@ -128,8 +128,7 @@ static void SrvUpgrade_StatePolling(void)
 
     if (Monitor.ParamStatus == UpgradeParam_Valid)
     {
-        /* invalid window time */
-
+        /* invalidation window time */
         if (Monitor.Info.reg.bit.App)
         {
 
@@ -179,6 +178,8 @@ static void SrvUpgrade_JumpTo(uint32_t addr, uint32_t app_size)
 
     if (addr_tmp && app_size && SrvUpgrade_CheckAppAddr(addr_tmp, app_size))
     {
+        /* log out jump addr and app size */
+
         /* disable all interrupt before jump to app */
         SrvOsCommon.disable_all_irq();
 

@@ -149,6 +149,7 @@
 
 /* radio uart */
 #define RADIO_PORT USART1
+#define RADIO_PORT_BAUD 460800
 
 #define RADIO_TX_PIN UART1_TX_PIN
 #define RADIO_RX_PIN UART1_RX_PIN
