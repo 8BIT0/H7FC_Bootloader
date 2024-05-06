@@ -164,8 +164,8 @@ void TaskBootCtl_Init(uint32_t period)
         BootMonitor.RadioPort_Obj.init_state = true;
         
         BootMonitor.avaliable_port_num ++;
-        BspUart.set_tx_callback(&RadioPortObj, TaskBootCtl_UartPort_Tx_Callback);
-        BspUart.set_rx_callback(&RadioPortObj, TaskBootCtl_UartPort_Rx_Callback);
+        BspUart.set_tx_callback(&BootMonitor.RadioPort_Obj, TaskBootCtl_UartPort_Tx_Callback);
+        BspUart.set_rx_callback(&BootMonitor.RadioPort_Obj, TaskBootCtl_UartPort_Rx_Callback);
 
         /* create tx semaphore */
         osSemaphoreDef(RadioPort_Tx);
@@ -251,17 +251,23 @@ static void TaskBootCtl_Send(uint8_t *p_buf, uint16_t len)
 /* Radio Port Callback */
 static void TaskBootCtl_UartPort_Tx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
 {
+    BootCtl_UartPortMonitor_TypeDef *obj = NULL;
+
     if (cust_data_addr && buff && size)
     {
-
+        obj = (BootCtl_UartPortMonitor_TypeDef *)cust_data_addr;
+        if (obj->p_tx_semphr)
+            osSemaphoreRelease(obj->p_tx_semphr);
     }
 }
 
 static void TaskBootCtl_UartPort_Rx_Callback(uint32_t cust_data_addr, uint8_t *buff, uint16_t size)
 {
+    BootCtl_UartPortMonitor_TypeDef *obj = NULL;
+    
     if (cust_data_addr && buff && size)
     {
-
+        obj = (BootCtl_UartPortMonitor_TypeDef *)cust_data_addr;
     }
 }
 
