@@ -59,17 +59,20 @@ typedef struct
 static SrvUpgradeMonitor_TypeDef Monitor;
 
 /* internal function */
+static void SrvUpgrade_Collect_Info(const char *format, ...);
 
 /* external function */
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
 static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback);
 static void SrvUpgrade_StatePolling(void);
+static void SrvUpgrade_Get_Info(uint8_t *p_info, uint16_t *len);
 
 /* external function */
 SrvUpgrade_TypeDef SrvUpgrade = {
     .init = SrvUpgrade_Init,
     .set_send_callback = SrvUpgrade_Set_Send,
     .polling = SrvUpgrade_StatePolling,
+    .get_info = SrvUpgrade_Get_Info,
 };
 
 static void SrvUpgrade_Set_Send(SrvUpgrade_Send_Callback callback)
@@ -85,7 +88,7 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     memset(&Monitor.Info, 0, sizeof(UpgradeInfo_TypeDef));
     search_out = Storage.search(External_Flash, Para_Boot, "Boot Info");
     if ((search_out.item_addr != 0) && \
-        (Storage.get(External_Flash, Para_Boot, search_out.item, &Monitor.Info, sizeof(UpgradeInfo_TypeDef)) == Storage_Error_None))
+        (Storage.get(External_Flash, Para_Boot, search_out.item, (uint8_t *)&Monitor.Info, sizeof(UpgradeInfo_TypeDef)) == Storage_Error_None))
     {
         Monitor.ParamStatus = UpgradeParam_None;
         switch ((uint8_t)stage)
@@ -146,6 +149,18 @@ static void SrvUpgrade_StatePolling(void)
     }
 }
 
+static void SrvUpgrade_Get_Info(uint8_t *p_info, uint16_t *len)
+{
+    if (p_info && len && (*len >= Monitor.LogOut_Info_size))
+    {
+        memcpy(p_info, Monitor.LogOut_Info, Monitor.LogOut_Info_size);
+        *len = Monitor.LogOut_Info_size;
+
+        memset(Monitor.LogOut_Info, 0, Monitor.LogOut_Info_size);
+        Monitor.LogOut_Info_size = 0;
+    }
+}
+
 static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
 {
     if (p_buf && len)
@@ -193,3 +208,23 @@ static void SrvUpgrade_JumpTo(uint32_t addr, uint32_t app_size)
         Monitor.UpgradeStage = Stage_JumpAddr_Error;
 }
 
+static void SrvUpgrade_Collect_Info(const char *format, ...)
+{
+    va_list args;
+    uint16_t buf_remain = 0;
+    uint16_t buf_capacity = sizeof(Monitor.LogOut_Info);
+    int16_t send_len = 0;
+
+    if (format && (Monitor.LogOut_Info_size < buf_capacity))
+    {
+        buf_remain = buf_capacity - Monitor.LogOut_Info_size;
+
+        va_start(args, format);
+
+        send_len = vsnprintf((char *)Monitor.LogOut_Info, buf_remain, format, args);
+        if (send_len > 0)
+            Monitor.LogOut_Info_size += send_len;
+
+        va_end(args);
+    }
+}

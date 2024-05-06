@@ -6,10 +6,6 @@
 #include "Bsp_USB.h"
 #include "Bsp_DMA.h"
 
-#define RADIO_BUFF_SIZE 512
-static uint8_t RadioRxBuff[RADIO_BUFF_SIZE];
-
-#define SEMAPHORE_WAIT_TIMEOUT  10
 #define VCP_ATTACH_TIMEOUT      100 /* 100ms */
 #define BOOTCTL_MIN_PERIOD      50  /* 50ms 20Hz */
 #define JUMP_WINDOW_TIME        500 /* default window time */
