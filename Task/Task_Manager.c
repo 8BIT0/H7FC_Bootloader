@@ -82,11 +82,11 @@ void Task_Manager_CreateTask(void)
             TaskFrameCTL_Init(TaskFrameCTL_Period_Def);
             TaskBootCtl_Init(TaskBootCtl_Period_Def);
 
-            osThreadDef(BootCTLTask, TaskBootCtl_Core, osPriorityNormal, 0, 1024);
-            TaskBootCtl_Handle = osThreadCreate(osThread(BootCTLTask), NULL);
-
             osThreadDef(FrameCTLTask, TaskFrameCTL_Core, osPriorityAboveNormal, 0, 2048);
             TaskFrameCTL_Handle = osThreadCreate(osThread(FrameCTLTask), NULL);
+
+            osThreadDef(BootCTLTask, TaskBootCtl_Core, osPriorityNormal, 0, 1024);
+            TaskBootCtl_Handle = osThreadCreate(osThread(BootCTLTask), NULL);
 
             init = true;
         }

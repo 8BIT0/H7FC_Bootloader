@@ -36,9 +36,8 @@ DEFAULT_BOOT_SIZE = 128K;
 MEMORY
 {
 FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = FLASH_SIZE
-RAM_OsHeap (xrw) : ORIGIN = 0x20000000, LENGTH = 64K
-RAM_Perph (xrw)  : ORIGIN = 0x20010000, LENGTH = 64K
-RAM (xrw)        : ORIGIN = 0x20020000, LENGTH = 256K
+RAM_Perph (xrw)  : ORIGIN = 0x20010000, LENGTH = 32K
+RAM (xrw)        : ORIGIN = 0x20020000, LENGTH = 352K
 }
 
 __rom_s = ORIGIN(FLASH);
@@ -132,17 +131,6 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
-
-  .OsHeap_Section :
-  {
-    . = ALIGN(4);
-    OsHeap_s = .;
-    *(.OsHeap_Section)
-    *(.OsHeap_Section*)
-
-    . = ALIGN(4);
-    OsHeap_e = .;
-  } >RAM_OsHeap AT>FLASH
 
   .Perph_Section :
   {

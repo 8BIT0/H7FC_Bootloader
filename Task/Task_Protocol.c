@@ -50,6 +50,7 @@ static FrameCTL_UartPortMonitor_TypeDef Radio_UartPort_List[RADIO_UART_NUM] = {
 #endif
 
 /* internal variable */
+bool cli_state = false;
 
 /* MAVLink message List */
 
@@ -117,10 +118,12 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
 static void TaskFrameCTL_Port_TxCplt_Callback(uint32_t RecObj_addr, uint8_t *p_data, uint32_t *size);
 static void TaskFrameCTL_USB_VCP_Connect_Callback(uint32_t Obj_addr, uint32_t *time_stamp);
 static uint32_t TaskFrameCTL_Set_RadioPort(FrameCTL_PortType_List port_type, uint16_t index);
-static void TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size);
+static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size);
+static bool TaskFrameCTL_DefaultPort_Trans(uint8_t *p_data, uint16_t size);
 static void TaskFrameCTL_CLI_Proc(void);
 static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size);
-static void TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size);
+static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size);
+static void TaskFrameCTL_ConfigureStateCheck(void);
 
 void TaskFrameCTL_Init(uint32_t period)
 {
@@ -149,11 +152,17 @@ void TaskFrameCTL_Init(uint32_t period)
 void TaskFrameCTL_Core(void *arg)
 {
     uint32_t per_time = SrvOsCommon.get_os_ms();
+    uint8_t t_buf[] = "test\r\n";
 
     while(1)
     {
+        /* check vcp connect state */
+        TaskFrameCTL_ConfigureStateCheck();
+        
         /* command line process */
         TaskFrameCTL_CLI_Proc();
+
+        TaskFrameCTL_Upgrade_Send(t_buf, strlen(t_buf));
 
         SrvOsCommon.precise_delay(&per_time, FrameCTL_Period);
     }
@@ -194,20 +203,25 @@ static void TaskFrameCTL_DefaultPort_Init(FrameCTL_PortMonitor_TypeDef *monitor)
     }
 }
 
-static void TaskFrameCTL_DefaultPort_Trans(uint8_t *p_data, uint16_t size)
+static bool TaskFrameCTL_DefaultPort_Trans(uint8_t *p_data, uint16_t size)
 {
-    uint32_t sys_time = SrvOsCommon.get_os_ms();
+    bool state = false;
 
     /* when attach to host device then send data */
     if (PortMonitor.VCP_Port.init_state && \
         PortMonitor.vcp_connect_state && \
         PortMonitor.VCP_Port.p_tx_semphr && \
-        BspUSB_VCP.check_connect(sys_time, VCP_CONNECT_TIMEOUT) && \
         p_data && size)
     {
-        BspUSB_VCP.send(p_data, size);
-        osSemaphoreWait(PortMonitor.VCP_Port.p_tx_semphr, FrameCTL_Port_Tx_TimeOut);
+        state = true;
+        if (BspUSB_VCP.send(p_data, size) != BspUSB_Error_None)
+            state = false;
+
+        if (osSemaphoreWait(PortMonitor.VCP_Port.p_tx_semphr, FrameCTL_Port_Tx_TimeOut) < 0)
+            state = false;
     }
+
+    return state;
 }
 
 /************************************** radio port section *************************/
@@ -311,21 +325,28 @@ static uint32_t TaskFrameCTL_Set_RadioPort(FrameCTL_PortType_List port_type, uin
 }
 
 /************************************** receive process callback section *************************/
-static void TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size)
+static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size)
 {
+    bool state = false;    
     FrameCTL_UartPortMonitor_TypeDef *p_UartPort = NULL;
 
     if(obj_addr && p_data && size)
     {
+        state = true;
         p_UartPort = (FrameCTL_UartPortMonitor_TypeDef *)obj_addr;
 
         /* when FC attach to some host usb device then send nothing through the radio */
         if(p_UartPort->init_state && p_UartPort->Obj && p_UartPort->p_tx_semphr && !PortMonitor.vcp_connect_state)
         {
-            BspUart.send(p_UartPort->Obj, p_data, size);
-            osSemaphoreWait(p_UartPort->p_tx_semphr, FrameCTL_Port_Tx_TimeOut);
+            if (!BspUart.send(p_UartPort->Obj, p_data, size))
+                state = false;
+
+            if (osSemaphoreWait(p_UartPort->p_tx_semphr, FrameCTL_Port_Tx_TimeOut) < 0)
+                state = false;
         }
     }
+
+    return state;
 }
 
 static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data, uint16_t size)
@@ -334,7 +355,6 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
     SrvComProto_Stream_TypeDef *p_stream = NULL;
     FrameCTL_PortProtoObj_TypeDef *p_RecObj = NULL;
     InUsePort_MavMsgInput_Obj = NULL;
-    bool cli_state = false;
 
     /* use mavlink protocol tuning the flight parameter */
     if(p_data && size && RecObj_addr)
@@ -403,7 +423,8 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
                     p_stream->size -= stream_in.size;
                 }
             }
-            else if(stream_in.pac_type == ComFrame_CLI)
+            
+            if(stream_in.pac_type == ComFrame_CLI)
             {
                 /* set current mode as cli mode */
                 /* all command line end up with "\r\n" */
@@ -411,6 +432,7 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
                 if(((CLI_Monitor.port_addr == 0) || (CLI_Monitor.port_addr == p_RecObj->PortObj_addr)) && \
                    (CLI_Monitor.p_rx_stream->size + p_stream->size) <= CLI_Monitor.p_rx_stream->max_size)
                 {
+                    cli_state = true;
                     CLI_Monitor.type = p_RecObj->type;
                     CLI_Monitor.port_addr = p_RecObj->PortObj_addr;
                     memcpy(CLI_Monitor.p_rx_stream->p_buf + CLI_Monitor.p_rx_stream->size, stream_in.p_buf, stream_in.size);
@@ -513,13 +535,25 @@ static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_
     }
 }
 /***************************************** Frame mavlink Receive Callback ************************************/
+static void TaskFrameCTL_ConfigureStateCheck(void)
+{
+    uint32_t tunning_time_stamp = 0;
+    uint32_t tunning_port = 0;
+    bool tunning_state = false;
+    uint32_t cur_time = SrvOsCommon.get_os_ms();
+    bool lst_vcp_state = false;
 
+    PortMonitor.vcp_connect_state = false;
+
+    /* check usb vcp attach state */
+    if (BspUSB_VCP.check_connect)
+        PortMonitor.vcp_connect_state = BspUSB_VCP.check_connect(cur_time, FrameCTL_Period);
+}
 
 /***************************************** CLI Section ***********************************************/
 static void TaskFrameCTL_CLI_Proc(void)
 {
     uint16_t rx_stream_size = 0;
-    bool arm_state;
     Shell *shell_obj = Shell_GetInstence();
 
     /* check CLI stream */
@@ -536,16 +570,20 @@ static void TaskFrameCTL_CLI_Proc(void)
     }
 }
 
-static void TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size)
+static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size)
 {
+    bool state = false;
+
     /* transmit via usb vcp port */
-    TaskFrameCTL_DefaultPort_Trans(p_buf, size);
+    state = TaskFrameCTL_DefaultPort_Trans(p_buf, size);
 
     /* transmit via uart port */
     for (uint8_t i = 0; i < PortMonitor.uart_port_num; i++)
     {
-        TaskFrameCTL_Port_Tx(PortMonitor.Uart_Port[i].RecObj.PortObj_addr, p_buf, size);
+        state |= TaskFrameCTL_Port_Tx(PortMonitor.Uart_Port[i].RecObj.PortObj_addr, p_buf, size);
     }
+
+    return state;
 }
 
 static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size)
@@ -578,6 +616,7 @@ static void TaskFermeCTL_CLI_DisableControl(void)
     {
         shellPrint(shell_obj, "\r\n\r\n");
         shellPrint(shell_obj, "CLI Disabled\r\n");
+        cli_state = false;
         CLI_Monitor.port_addr = 0;
     }
 }

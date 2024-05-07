@@ -16,7 +16,7 @@
 #define APP_Address_Base
 #define Default_App_Address
 
-typedef void (*SrvUpgrade_Send_Callback)(uint8_t *p_buf, uint16_t len);
+typedef bool (*SrvUpgrade_Send_Callback)(uint8_t *p_buf, uint16_t len);
 
 typedef enum
 {

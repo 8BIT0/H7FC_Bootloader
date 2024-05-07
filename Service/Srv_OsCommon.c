@@ -19,7 +19,7 @@ static bool first_call = true;
 static SrvOsCommon_HeapMonitor_TypeDef OsHeap_Monitor = {0};
 
 /* external vriable */
-uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".OsHeap_Section")));
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 
 /* external function */
 static void* SrvOsCommon_Malloc(uint32_t size);

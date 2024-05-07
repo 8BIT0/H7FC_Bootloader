@@ -240,16 +240,17 @@ static void SrvUpgrade_Collect_Info(const char *format, ...)
 
         va_start(args, format);
 
-        send_len = vsnprintf((char *)Monitor.LogOut_Info, buf_remain, format, args);
+        send_len = vsnprintf((char *)(Monitor.LogOut_Info + Monitor.LogOut_Info_size), buf_remain, format, args);
         if (send_len > 0)
             Monitor.LogOut_Info_size += send_len;
 
         if (Monitor.send)
         {
-            Monitor.send(Monitor.LogOut_Info, Monitor.LogOut_Info_size);
-
-            memset(Monitor.LogOut_Info, 0, Monitor.LogOut_Info_size);
-            Monitor.LogOut_Info_size = 0;
+            if (Monitor.send(Monitor.LogOut_Info, Monitor.LogOut_Info_size))
+            {
+                memset(Monitor.LogOut_Info, 0, Monitor.LogOut_Info_size);
+                Monitor.LogOut_Info_size = 0;
+            }
         }
 
         va_end(args);
