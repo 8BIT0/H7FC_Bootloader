@@ -21,6 +21,7 @@ typedef void (*Application_Func)(void);
 #define Boot_Section_Size   ((uint32_t)&__boot_e - (uint32_t)&__boot_s)
 
 #define Default_App_Address ((uint32_t)&__boot_e)
+#define Default_App_Size    ((uint32_t)&__rom_e - Default_App_Address)
 
 typedef enum
 {
@@ -52,6 +53,7 @@ typedef struct
     SrvUpgrade_State_List UpgradeStage;
     uint32_t jump_time;
     uint32_t JumpAddr;
+    uint32_t AppSize;
 
     uint8_t buf[FIRMWARE_MAX_READ_SIZE];
     uint16_t buf_size;
@@ -67,6 +69,7 @@ static SrvUpgradeMonitor_TypeDef Monitor = {
 
 /* internal function */
 static void SrvUpgrade_Collect_Info(const char *format, ...);
+static void SrvUpgrade_JumpTo(uint32_t addr, uint32_t app_size);
 
 /* external function */
 static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
@@ -107,6 +110,7 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     SrvUpgrade_Collect_Info("\t\t[Boot Info] index -> %d\r\n", search_out.item_index);
     
     Monitor.JumpAddr = Default_App_Address;
+    Monitor.AppSize  = Default_App_Size;
     Monitor.ParamStatus = UpgradeParam_InValid;
     if ((search_out.item_addr != 0) && \
         (Storage.get(External_Flash, Para_Boot, search_out.item, (uint8_t *)&Monitor.Info, sizeof(UpgradeInfo_TypeDef)) == Storage_Error_None))
@@ -124,7 +128,7 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
             case On_Boot:
                 if (Monitor.Info.reg.bit.App || Monitor.Info.reg.bit.Module)
                     Monitor.ParamStatus = UpgradeParam_Valid;
-                /* update app address */
+                /* update app address and app size */
                 break;
 
             default:
@@ -161,8 +165,9 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
 
     /* show jump time stamp */
     SrvUpgrade_Collect_Info("\tJump time: %d\r\n", Monitor.jump_time);
-    Monitor.init_state = true;
+    SrvUpgrade_Collect_Info("\r\n");
 
+    Monitor.init_state = true;
     return false;
 }
 
@@ -192,9 +197,10 @@ static void SrvUpgrade_StatePolling(void)
         if (sys_time >= Monitor.jump_time)
         {
             SrvUpgrade_Collect_Info("[Jump To App]\r\n");
-            SrvUpgrade_Collect_Info("\tJump Address: 0x%08x\r\n", Monitor.JumpAddr);
-            SrvOsCommon.delay_ms(100);
-            SrvUpgrade_JumpTo();
+            SrvUpgrade_Collect_Info("\tApp Address: 0x%08x\r\n", Monitor.JumpAddr);
+            SrvUpgrade_Collect_Info("\tApp Size:    0x%08x\r\n", Monitor.AppSize);
+            SrvOsCommon.delay_ms(10);
+            SrvUpgrade_JumpTo(Monitor.JumpAddr, Monitor.AppSize);
         }
         else
         {
@@ -214,7 +220,7 @@ static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
 static bool SrvUpgrade_CheckAppAddr(uint32_t addr, uint32_t size)
 {
     /* check app base address */
-    if ((addr & 0xFFFF0000) != ((uint32_t)&__rom_s))
+    if ((addr & 0xFF000000) != ((uint32_t)&__rom_s))
         /* error address */
         return false;
 

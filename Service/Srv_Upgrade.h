@@ -59,7 +59,7 @@ typedef struct
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
     void (*polling)(void);
     uint16_t (*get_log)(uint8_t *p_info, uint16_t len);
-    uint16_t (*clear_log)(void);
+    void (*clear_log)(void);
 } SrvUpgrade_TypeDef;
 
 extern SrvUpgrade_TypeDef SrvUpgrade;
