@@ -8,6 +8,7 @@
 #include "Srv_OsCommon.h"
 #include "shell_port.h"
 #include "Storage.h"
+#include "DataPipe.h"
 
 #define TaskControl_Period_Def   5  /* unit: ms period 5ms  200Hz  */
 #define TaskBootCtl_Period_Def   10 /* unit: ms period 10ms 100Hz */
@@ -76,6 +77,8 @@ void Task_Manager_CreateTask(void)
     {
         if (!init)
         {
+            DataPipe_Init();
+
             Storage.init(storage_module_enable, storage_ExtFlashObj);
             SrvComProto.init(SrvComProto_Type_MAV, NULL);
             

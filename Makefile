@@ -63,6 +63,7 @@ common/util.c \
 common/compess/minilzo.c \
 System/storage/Storage.c \
 System/Reboot/reboot.c \
+System/DataPipe/DataPipe.c \
 System/FreeRTOS/croutine.c \
 System/FreeRTOS/event_groups.c \
 System/FreeRTOS/list.c \
@@ -264,6 +265,7 @@ C_INCLUDES =  \
 -ISystem/shell \
 -ISystem/storage \
 -ISystem/diskio \
+-ISystem/DataPipe \
 -Idebug \
 -IMAVLink \
 -IAlgorithm/Navi_Dep \
@@ -276,7 +278,6 @@ C_INCLUDES =  \
 -IDataStructure/ \
 -ISystem/kernel/ \
 -ISystem/Reboot/ \
--ISystem/DataPipe/ \
 -IHW_Lib/Port_Def/
 ifeq ($(BUILD_TYPE), $(HW_MATEK_STM32H743))
 C_INCLUDES +=  \
