@@ -55,7 +55,10 @@ void TaskBootCtl_Core(const void *argument)
     {
         sys_time = SrvOsCommon.get_os_ms();
         
-        SrvUpgrade.polling();
+        if (SrvUpgrade.polling() == Stage_ReadyToJump)
+        {
+            
+        }
 
         SrvOsCommon.precise_delay(&pre_time, BootMonitor.period);
     }

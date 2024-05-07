@@ -44,6 +44,24 @@ typedef struct
     uint8_t ver[3];
 } FrimwareInfo_TypeDef;
 
+typedef enum
+{
+    Stage_Init = 0,
+    Stage_Wait_PortData,
+    Stage_Checking_App_Firmware,
+    Stage_Checking_Module_Firmware,
+    Stage_FirmwareData_Error,
+    Stage_Processing_PortData,
+    Stage_PortData_Error,
+    Stage_Proto_TimeOut,
+    Stage_App_Upgrading,
+    Stage_Module_Upgrading,
+    Stage_ReadyToJump,
+    Stage_JumpToTarget,
+    Stage_JumpError,
+    Stage_Unknow,
+} SrvUpgrade_Stage_List;
+
 #pragma pack(1)
 typedef struct
 {
@@ -57,7 +75,8 @@ typedef struct
 typedef struct
 {
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
-    void (*polling)(void);
+    SrvUpgrade_Stage_List (*polling)(void);
+    void (*jump)(void);
     uint16_t (*get_log)(uint8_t *p_info, uint16_t len);
     void (*clear_log)(void);
 } SrvUpgrade_TypeDef;
