@@ -191,7 +191,7 @@ static void SrvUpgrade_StatePolling(void)
     {
         if (sys_time >= Monitor.jump_time)
         {
-            SrvUpgrade_Collect_Info("Jump To App\r\n");
+            SrvUpgrade_Collect_Info("[Jump To App]\r\n");
             SrvUpgrade_Collect_Info("\tJump Address: 0x%08x\r\n", Monitor.JumpAddr);
             SrvOsCommon.delay_ms(100);
             SrvUpgrade_JumpTo();
