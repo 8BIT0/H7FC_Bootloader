@@ -234,7 +234,7 @@ static bool SrvUpgrade_CheckAppAddr(uint32_t addr, uint32_t size)
     /* check app base address */
     if ((addr & 0xFF000000) != ((uint32_t)&__rom_s))
     {
-        SrvUpgrade_Collect_Info("[Bad Jump Address 0x%08x]\r\n", addr);
+        SrvUpgrade_Collect_Info("[ ------- Bad Jump Address 0x%08x -------]\r\n", addr);
         SrvUpgrade_Collect_Info("\r\n");
         /* error address */
         return false;
@@ -243,7 +243,7 @@ static bool SrvUpgrade_CheckAppAddr(uint32_t addr, uint32_t size)
     /* app start address check */
     if (addr < ((uint32_t)&__boot_e))
     {
-        SrvUpgrade_Collect_Info("[Bad Jump Address 0x%08x]\r\n", addr);
+        SrvUpgrade_Collect_Info("[ ------- Bad Jump Address 0x%08x ------- ]\r\n", addr);
         SrvUpgrade_Collect_Info("\r\n");
         /* app start address is lower then end of the boot section */
         return false;
@@ -252,7 +252,7 @@ static bool SrvUpgrade_CheckAppAddr(uint32_t addr, uint32_t size)
     /* app size range check */
     if ((addr + size) > ((uint32_t)&__rom_e))
     {
-        SrvUpgrade_Collect_Info("[App Size Over Range]\r\n");
+        SrvUpgrade_Collect_Info("[ ------- App Size Over Range ------- ]\r\n");
         SrvUpgrade_Collect_Info("\tApp Start Addr: 0x%08x\r\n", addr);
         SrvUpgrade_Collect_Info("\tApp End   Addr: 0x%08x\r\n", (addr + size));
         SrvUpgrade_Collect_Info("\tApp Size:       %d\r\n", size);
