@@ -13,7 +13,7 @@
 #include "../HW_Lib/AT32F435/HW_Def.h"
 #endif
 
-#define PROTO_STREAM_BUF_SIZE 512
+#define PROTO_STREAM_BUF_SIZE 1024
 #define VCP_CONNECT_TIMEOUT 50      /* unit: ms */
 
 #if (RADIO_UART_NUM > 0)
@@ -65,6 +65,7 @@ static __attribute__((section(".Perph_Section"))) uint8_t MavShareBuf[1024];
 static __attribute__((section(".Perph_Section"))) uint8_t CLIRxBuf[CLI_FUNC_BUF_SIZE];
 static uint8_t CLIProcBuf[CLI_FUNC_BUF_SIZE];
 static uint8_t Uart_RxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
+static uint8_t Uart_TxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
 static uint8_t USB_RxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
 static uint32_t Radio_Addr = 0;
 static uint32_t USB_VCP_Addr = 0;
@@ -73,6 +74,12 @@ static SrvComProto_Stream_TypeDef UartRx_Stream = {
     .p_buf = Uart_RxBuf_Tmp,
     .size = 0,
     .max_size = sizeof(Uart_RxBuf_Tmp),
+};
+
+static SrvComProto_Stream_TypeDef Log_Stream = {
+    .p_buf = Uart_TxBuf_Tmp,
+    .size = 0,
+    .max_size = sizeof(Uart_TxBuf_Tmp),
 };
 
 static SrvComProto_Stream_TypeDef USBRx_Stream = {
@@ -125,6 +132,9 @@ static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size);
 static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size);
 static void TaskFrameCTL_ConfigureStateCheck(void);
 
+/* upgrade proto section */
+static void TaskFrameCTL_UpgradeInfo_Out(void);
+
 void TaskFrameCTL_Init(uint32_t period)
 {
     FrameCTL_Period = FrameCTL_MAX_Period;
@@ -137,8 +147,6 @@ void TaskFrameCTL_Init(uint32_t period)
     TaskFrameCTL_DefaultPort_Init(&PortMonitor);
     TaskFrameCTL_RadioPort_Init(&PortMonitor);
     Radio_Addr = TaskFrameCTL_Set_RadioPort(Port_Uart, 0);
-
-    SrvUpgrade.set_send_callback(TaskFrameCTL_Upgrade_Send);
 
     PortMonitor.init = true;
     
@@ -162,7 +170,8 @@ void TaskFrameCTL_Core(void *arg)
         /* command line process */
         TaskFrameCTL_CLI_Proc();
 
-        TaskFrameCTL_Upgrade_Send(t_buf, strlen(t_buf));
+        /* Log Out upgrade info */
+        TaskFrameCTL_UpgradeInfo_Out();
 
         SrvOsCommon.precise_delay(&per_time, FrameCTL_Period);
     }
@@ -185,7 +194,7 @@ static void TaskFrameCTL_DefaultPort_Init(FrameCTL_PortMonitor_TypeDef *monitor)
 
         /* create USB VCP Tx semaphore */
         osSemaphoreDef(DefaultPort_Tx);
-        monitor->VCP_Port.p_tx_semphr = osSemaphoreCreate(osSemaphore(DefaultPort_Tx), 128);
+        monitor->VCP_Port.p_tx_semphr = osSemaphoreCreate(osSemaphore(DefaultPort_Tx), 1);
 
         if(monitor->VCP_Port.p_tx_semphr == NULL)
         {
@@ -214,10 +223,9 @@ static bool TaskFrameCTL_DefaultPort_Trans(uint8_t *p_data, uint16_t size)
         p_data && size)
     {
         state = true;
-        if (BspUSB_VCP.send(p_data, size) != BspUSB_Error_None)
-            state = false;
-
-        if (osSemaphoreWait(PortMonitor.VCP_Port.p_tx_semphr, FrameCTL_Port_Tx_TimeOut) < 0)
+        osSemaphoreWait(PortMonitor.VCP_Port.p_tx_semphr, 0);
+        if ((BspUSB_VCP.send(p_data, size) != BspUSB_Error_None) || \
+            (osSemaphoreWait(PortMonitor.VCP_Port.p_tx_semphr, FrameCTL_Port_Tx_TimeOut) < 0))
             state = false;
     }
 
@@ -275,7 +283,7 @@ static void TaskFrameCTL_RadioPort_Init(FrameCTL_PortMonitor_TypeDef *monitor)
             
                 /* create semaphore for send */
                 osSemaphoreDef(Uart_Port_Tmp);
-                monitor->Uart_Port[i].p_tx_semphr = osSemaphoreCreate(osSemaphore(Uart_Port_Tmp), 32);
+                monitor->Uart_Port[i].p_tx_semphr = osSemaphoreCreate(osSemaphore(Uart_Port_Tmp), 1);
 
                 if(monitor->Uart_Port[i].p_tx_semphr)
                 {
@@ -335,15 +343,15 @@ static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t si
         state = true;
         p_UartPort = (FrameCTL_UartPortMonitor_TypeDef *)obj_addr;
 
-        /* when FC attach to some host usb device then send nothing through the radio */
-        if(p_UartPort->init_state && p_UartPort->Obj && p_UartPort->p_tx_semphr && !PortMonitor.vcp_connect_state)
+        if(p_UartPort->init_state && p_UartPort->Obj && p_UartPort->p_tx_semphr)
         {
-            if (!BspUart.send(p_UartPort->Obj, p_data, size))
-                state = false;
-
-            if (osSemaphoreWait(p_UartPort->p_tx_semphr, FrameCTL_Port_Tx_TimeOut) < 0)
+            osSemaphoreWait(p_UartPort->p_tx_semphr, 0);
+            if ((!BspUart.send(p_UartPort->Obj, p_data, size)) || \
+                (osSemaphoreWait(p_UartPort->p_tx_semphr, FrameCTL_Port_Tx_TimeOut) != osOK))
                 state = false;
         }
+        else
+            state = false;
     }
 
     return state;
@@ -550,6 +558,42 @@ static void TaskFrameCTL_ConfigureStateCheck(void)
         PortMonitor.vcp_connect_state = BspUSB_VCP.check_connect(cur_time, FrameCTL_Period);
 }
 
+/***************************************** Upgrade Section ***********************************************/
+static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size)
+{
+    bool state = false;
+
+    /* transmit via usb vcp port */
+    // state = TaskFrameCTL_DefaultPort_Trans(p_buf, size);
+
+    /* transmit via uart port */
+    for (uint8_t i = 0; i < PortMonitor.uart_port_num; i++)
+    {
+        state |= TaskFrameCTL_Port_Tx(PortMonitor.Uart_Port[i].RecObj.PortObj_addr, p_buf, size);
+    }
+
+    return state;
+}
+
+static void TaskFrameCTL_UpgradeInfo_Out(void)
+{
+    uint16_t log_size = 0;
+    
+    /* check enbal port type */
+
+    log_size = SrvUpgrade.get_log((Log_Stream.p_buf + Log_Stream.size), Log_Stream.max_size);
+    if (log_size || Log_Stream.size)
+    {
+        Log_Stream.size += log_size;
+        if (TaskFrameCTL_Upgrade_Send(Log_Stream.p_buf, Log_Stream.size))
+        {
+            memset(Log_Stream.p_buf, 0, Log_Stream.size);
+            Log_Stream.size = 0;
+            SrvUpgrade.clear_log();
+        }
+    }
+}
+
 /***************************************** CLI Section ***********************************************/
 static void TaskFrameCTL_CLI_Proc(void)
 {
@@ -568,22 +612,6 @@ static void TaskFrameCTL_CLI_Proc(void)
             CLI_Monitor.p_rx_stream->size --;
         }
     }
-}
-
-static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size)
-{
-    bool state = false;
-
-    /* transmit via usb vcp port */
-    state = TaskFrameCTL_DefaultPort_Trans(p_buf, size);
-
-    /* transmit via uart port */
-    for (uint8_t i = 0; i < PortMonitor.uart_port_num; i++)
-    {
-        state |= TaskFrameCTL_Port_Tx(PortMonitor.Uart_Port[i].RecObj.PortObj_addr, p_buf, size);
-    }
-
-    return state;
 }
 
 static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size)

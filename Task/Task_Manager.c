@@ -85,7 +85,7 @@ void Task_Manager_CreateTask(void)
             osThreadDef(FrameCTLTask, TaskFrameCTL_Core, osPriorityAboveNormal, 0, 2048);
             TaskFrameCTL_Handle = osThreadCreate(osThread(FrameCTLTask), NULL);
 
-            osThreadDef(BootCTLTask, TaskBootCtl_Core, osPriorityNormal, 0, 1024);
+            osThreadDef(BootCTLTask, TaskBootCtl_Core, osPriorityNormal, 0, 2048);
             TaskBootCtl_Handle = osThreadCreate(osThread(BootCTLTask), NULL);
 
             init = true;
