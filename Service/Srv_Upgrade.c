@@ -195,10 +195,10 @@ static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
             return Monitor.PollingState;
 
         case Stage_Checking_App_Firmware:
-            break;
+            return Stage_Checking_App_Firmware;
 
         case Stage_Checking_Module_Firmware:
-            break;
+            return Stage_Checking_Module_Firmware;
 
         case Stage_Wait_PortData:
             if (sys_time >= Monitor.jump_time)

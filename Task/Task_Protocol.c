@@ -9,8 +9,6 @@
 #include "../HW_Lib/AT32F435/HW_Def.h"
 #elif defined STM32H743xx
 #include "../HW_Lib/STM32H7/HW_Def.h"
-#else
-#include "../HW_Lib/AT32F435/HW_Def.h"
 #endif
 
 #define PROTO_STREAM_BUF_SIZE 1024
