@@ -140,6 +140,7 @@ static void TaskFrameCTL_ConfigureStateCheck(void);
 
 /* upgrade proto section */
 static void TaskFrameCTL_UpgradeInfo_Out(void);
+static void TaskFrameCTL_Upgrade_StateCheck(void);
 
 void TaskFrameCTL_Init(uint32_t period)
 {
@@ -346,6 +347,28 @@ static uint32_t TaskFrameCTL_Set_RadioPort(FrameCTL_PortType_List port_type, uin
 }
 
 /************************************** receive process callback section *************************/
+static bool TaskFrameCTL_Port_DeInit(void)
+{
+    bool state = false;
+    static bool vcp_state = false;
+    static uint8_t port_index = 0;
+
+    /* disable usb vcp */
+    if (!vcp_state || (BspUSB_VCP.de_init() == BspUSB_Error_None))
+        vcp_state = true;
+
+    /* disable radio port */
+    for (; port_index < RADIO_UART_NUM; port_index ++)
+    {
+        // BspUart.de_init();
+    }
+
+    if (vcp_state && (port_index == RADIO_UART_NUM))
+        return true;
+
+    return false;
+}
+
 static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size)
 {
     bool state = false;    
@@ -613,6 +636,20 @@ static void TaskFrameCTL_UpgradeInfo_Out(void)
             Log_Stream.size = 0;
             SrvUpgrade.clear_log();
         }
+    }
+}
+
+static void TaskFrameCTL_Upgrade_StateCheck(void)
+{
+    switch ((uint8_t)DataPipe_DataObj(t_PortState).stage)
+    {
+        case Stage_ReadyToJump:
+            /* disable all port */
+            if (TaskFrameCTL_Port_DeInit())
+                DataPipe_DataObj(t_PortState).All_Port_Disabled = true;
+            break;
+        
+        default: break;
     }
 }
 

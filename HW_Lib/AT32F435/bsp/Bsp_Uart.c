@@ -409,10 +409,16 @@ static bool BspUart_DeInit(BspUARTObj_TypeDef *obj)
     {
         /* deinit dma port */
         if (obj->rx_dma_hdl)
+        {
+            dma_channel_enable(To_DMA_Handle_Ptr(obj->rx_dma_hdl), FALSE);
             dma_reset(To_DMA_Handle_Ptr(obj->rx_dma_hdl));
+        }
 
         if (obj->tx_dma_hdl)
+        {
+            dma_channel_enable(To_DMA_Handle_Ptr(obj->tx_dma_hdl), FALSE);
             dma_reset(To_DMA_Handle_Ptr(obj->tx_dma_hdl));
+        }
 
         /* deinit uart port */
         usart_reset(To_Uart_Instance(obj->instance));
