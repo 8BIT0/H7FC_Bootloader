@@ -2,6 +2,7 @@
 #include "Srv_OsCommon.h"
 #include "Srv_Upgrade.h"
 #include "Storage.h"
+#include "DataPipe.h"
 #include "Bsp_Uart.h"
 #include "Bsp_USB.h"
 #include "Bsp_DMA.h"
@@ -11,6 +12,11 @@
 #define JUMP_WINDOW_TIME        500 /* default window time */
 
 #define RunningStage On_Boot
+
+DataPipe_CreateDataObj(SrvUpgrade_State_TypeDef, t_BootState);
+static SrvUpgrade_State_TypeDef PortState = {
+    .All_Port_Disabled = false,
+};
 
 typedef enum
 {
@@ -36,9 +42,18 @@ static BootCtlMonitor_TypeDef BootMonitor = {
     .init_state = false,
 };
 
+/* internal function */
+static void TaskBootCTL_PipeSendCallback(void *pipe_obj);
+
 void TaskBootCtl_Init(uint32_t period)
 {
     SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
+    
+    memset(&JumpState_BootPipe, 0, sizeof(JumpState_BootPipe));
+    JumpState_BootPipe.data_addr = DataPipe_DataObjAddr(t_BootState);
+    JumpState_BootPipe.data_addr = DataPipe_DataSize(t_BootState);
+    JumpState_BootPipe.trans_finish_cb = TaskBootCTL_PipeSendCallback;
+    DataPipe_Enable(&JumpState_BootPipe);
 
     /* get base info from storage module */
     BootMonitor.period = period;
@@ -54,13 +69,27 @@ void TaskBootCtl_Core(const void *argument)
     while(1)
     {
         sys_time = SrvOsCommon.get_os_ms();
-        
-        if (SrvUpgrade.polling() == Stage_ReadyToJump)
+        DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling();
+        DataPipe_SendTo(&JumpState_BootPipe, &JumpState_PortPipe);
+
+        switch ((uint8_t)DataPipe_DataObj(t_BootState).stage)
         {
-            
+            case Stage_ReadyToJump:
+                
+                break;
+
+            default: break;
         }
 
         SrvOsCommon.precise_delay(&pre_time, BootMonitor.period);
+    }
+}
+
+static void TaskBootCTL_PipeSendCallback(void *pipe_obj)
+{
+    if (pipe_obj == &JumpState_BootPipe)
+    {
+
     }
 }
 

@@ -63,6 +63,7 @@ common/util.c \
 common/compess/minilzo.c \
 System/storage/Storage.c \
 System/Reboot/reboot.c \
+System/DataPipe/DataPipe_Def.c \
 System/DataPipe/DataPipe.c \
 System/FreeRTOS/croutine.c \
 System/FreeRTOS/event_groups.c \

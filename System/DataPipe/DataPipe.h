@@ -85,42 +85,7 @@ inline bool DataPipe_Set_RxInterval(DataPipeObj_TypeDef *obj, uint32_t interval_
     return false;
 }
 
-extern DataPipeObj_TypeDef VCP_Connect_smp_DataPipe;
-extern DataPipeObj_TypeDef VCP_Connect_hub_DataPipe;
-
-extern DataPipeObj_TypeDef SensorInitState_smp_DataPipe;
-extern DataPipeObj_TypeDef SensorInitState_hub_DataPipe;
-extern DataPipeObj_TypeDef SensorEnableState_smp_DataPipe;
-extern DataPipeObj_TypeDef SensorEnableState_hub_DataPipe;
-
-extern DataPipeObj_TypeDef IMU_Smp_DataPipe;
-extern DataPipeObj_TypeDef IMU_Log_DataPipe;
-extern DataPipeObj_TypeDef IMU_hub_DataPipe;
-
-extern DataPipeObj_TypeDef IMU_PriRange_Smp_DataPipe;
-extern DataPipeObj_TypeDef IMU_PriRange_hub_DataPipe;
-extern DataPipeObj_TypeDef IMU_SecRange_Smp_DataPipe;
-extern DataPipeObj_TypeDef IMU_SecRange_hub_DataPipe;
-
-extern DataPipeObj_TypeDef Receiver_Smp_DataPipe;
-extern DataPipeObj_TypeDef Receiver_hub_DataPipe;
-
-extern DataPipeObj_TypeDef InUseCtlData_Smp_DataPipe;
-extern DataPipeObj_TypeDef InUseCtlData_hub_DataPipe;
-
-extern DataPipeObj_TypeDef Actuator_Smp_DataPipe;
-extern DataPipeObj_TypeDef Actuator_hub_DataPipe;
-
-extern DataPipeObj_TypeDef Baro_smp_DataPipe;
-extern DataPipeObj_TypeDef Baro_hub_DataPipe;
-
-extern DataPipeObj_TypeDef Attitude_smp_DataPipe;
-extern DataPipeObj_TypeDef Attitude_hub_DataPipe;
-
-extern DataPipeObj_TypeDef POS_smp_DataPipe;
-extern DataPipeObj_TypeDef POS_hub_DataPipe;
-
-extern DataPipeObj_TypeDef Vel_smp_DataPipe;
-extern DataPipeObj_TypeDef Vel_hub_DataPipe;
+extern DataPipeObj_TypeDef JumpState_BootPipe;
+extern DataPipeObj_TypeDef JumpState_PortPipe;
 
 #endif

@@ -62,6 +62,12 @@ typedef enum
     Stage_Unknow,
 } SrvUpgrade_Stage_List;
 
+typedef struct
+{
+    SrvUpgrade_Stage_List stage;
+    bool All_Port_Disabled;
+} SrvUpgrade_State_TypeDef;
+
 #pragma pack(1)
 typedef struct
 {

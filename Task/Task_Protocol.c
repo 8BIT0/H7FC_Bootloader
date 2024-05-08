@@ -5,11 +5,17 @@
 #include "Srv_FileAdapter.h"
 #include "Srv_Upgrade.h"
 #include "../FCHW_Config.h"
+#include "DataPipe.h"
 #if defined AT32F435RGT7
 #include "../HW_Lib/AT32F435/HW_Def.h"
 #elif defined STM32H743xx
 #include "../HW_Lib/STM32H7/HW_Def.h"
 #endif
+
+DataPipe_CreateDataObj(SrvUpgrade_State_TypeDef, t_PortState);
+static SrvUpgrade_State_TypeDef BootState = {
+    .stage = Stage_Init,
+};
 
 #define PROTO_STREAM_BUF_SIZE 1024
 #define VCP_CONNECT_TIMEOUT 50      /* unit: ms */
@@ -115,6 +121,8 @@ static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_
 
 /* mavlinke frame decode callback */
 
+/* pipe callback */
+static void TaskPortCTL_PipeSendCallback(void *pipe_obj);
 
 /* default vcp port section */
 static void TaskFrameCTL_DefaultPort_Init(FrameCTL_PortMonitor_TypeDef *monitor);
@@ -151,6 +159,11 @@ void TaskFrameCTL_Init(uint32_t period)
     if(period && (period <= FrameCTL_MAX_Period))
         FrameCTL_Period = period;
 
+    JumpState_PortPipe.data_addr = DataPipe_DataObjAddr(t_PortState);
+    JumpState_PortPipe.data_addr = DataPipe_DataSize(t_PortState);
+    JumpState_PortPipe.trans_finish_cb = TaskPortCTL_PipeSendCallback;
+    DataPipe_Enable(&JumpState_PortPipe);
+
     /* Shell Init */
     Shell_Init(TaskFrameCTL_CLI_Trans, CLI_Monitor.p_proc_stream->p_buf, CLI_Monitor.p_proc_stream->max_size);
 }
@@ -170,6 +183,8 @@ void TaskFrameCTL_Core(void *arg)
 
         /* Log Out upgrade info */
         TaskFrameCTL_UpgradeInfo_Out();
+
+        /* Port Process Pre Jump */
 
         SrvOsCommon.precise_delay(&per_time, FrameCTL_Period);
     }
@@ -554,6 +569,15 @@ static void TaskFrameCTL_ConfigureStateCheck(void)
     /* check usb vcp attach state */
     if (BspUSB_VCP.check_connect)
         PortMonitor.vcp_connect_state = BspUSB_VCP.check_connect(cur_time, FrameCTL_Period);
+}
+
+/***************************************** Pipe Callback ************************************************/
+static void TaskPortCTL_PipeSendCallback(void *pipe_obj)
+{
+    if (pipe_obj == &JumpState_PortPipe)
+    {
+
+    }
 }
 
 /***************************************** Upgrade Section ***********************************************/
