@@ -54,7 +54,8 @@ static FrameCTL_UartPortMonitor_TypeDef Radio_UartPort_List[RADIO_UART_NUM] = {
 #endif
 
 /* internal variable */
-bool cli_state = false;
+static bool cli_state = false;
+static bool Port_PipeUpdate = false;
 
 /* MAVLink message List */
 
@@ -186,6 +187,7 @@ void TaskFrameCTL_Core(void *arg)
         TaskFrameCTL_UpgradeInfo_Out();
 
         /* Port Process Pre Jump */
+        TaskFrameCTL_Upgrade_StateCheck();
 
         SrvOsCommon.precise_delay(&per_time, FrameCTL_Period);
     }
@@ -599,7 +601,7 @@ static void TaskPortCTL_PipeSendCallback(void *pipe_obj)
 {
     if (pipe_obj == &JumpState_PortPipe)
     {
-
+        Port_PipeUpdate = true;
     }
 }
 
@@ -641,15 +643,23 @@ static void TaskFrameCTL_UpgradeInfo_Out(void)
 
 static void TaskFrameCTL_Upgrade_StateCheck(void)
 {
-    switch ((uint8_t)DataPipe_DataObj(t_PortState).stage)
+    if (Port_PipeUpdate)
     {
-        case Stage_ReadyToJump:
-            /* disable all port */
-            if (TaskFrameCTL_Port_DeInit())
-                DataPipe_DataObj(t_PortState).All_Port_Disabled = true;
-            break;
-        
-        default: break;
+        switch ((uint8_t)DataPipe_DataObj(t_PortState).stage)
+        {
+            case Stage_ReadyToJump:
+                /* disable all port */
+                if (TaskFrameCTL_Port_DeInit())
+                {
+                    DataPipe_DataObj(t_PortState).All_Port_Disabled = true;
+                    DataPipe_SendTo(&JumpState_PortPipe, &JumpState_BootPipe);
+                }
+                break;
+            
+            default: break;
+        }
+
+        Port_PipeUpdate = false;
     }
 }
 

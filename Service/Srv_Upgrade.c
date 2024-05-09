@@ -269,12 +269,11 @@ static void SrvUpgrade_JumpTo(void)
 {
     if (Monitor.JumpAddr && Monitor.AppSize && SrvUpgrade_CheckAppAddr(Monitor.JumpAddr, Monitor.AppSize))
     {
+        /* log out jump addr and app size */
         SrvUpgrade_Collect_Info("[Jump To App]\r\n");
         SrvUpgrade_Collect_Info("\tApp Address: 0x%08x\r\n", Monitor.JumpAddr);
         SrvUpgrade_Collect_Info("\tApp Size:    0x%08x\r\n", Monitor.AppSize);
         SrvOsCommon.delay_ms(10);
-
-        /* log out jump addr and app size */
 
         /* disable all interrupt before jump to app */
         SrvOsCommon.disable_all_irq();

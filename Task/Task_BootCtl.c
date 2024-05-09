@@ -41,6 +41,7 @@ typedef struct
 static BootCtlMonitor_TypeDef BootMonitor = {
     .init_state = false,
 };
+static bool Boot_PipeUpdate = false;
 
 /* internal function */
 static void TaskBootCTL_PipeSendCallback(void *pipe_obj);
@@ -75,7 +76,11 @@ void TaskBootCtl_Core(const void *argument)
         switch ((uint8_t)DataPipe_DataObj(t_BootState).stage)
         {
             case Stage_ReadyToJump:
-                
+                if (Boot_PipeUpdate && DataPipe_DataObj(t_BootState).All_Port_Disabled)
+                {
+                    SrvUpgrade.jump();
+                    Boot_PipeUpdate = false;
+                }
                 break;
 
             default: break;
@@ -89,7 +94,7 @@ static void TaskBootCTL_PipeSendCallback(void *pipe_obj)
 {
     if (pipe_obj == &JumpState_BootPipe)
     {
-
+        Boot_PipeUpdate = true;
     }
 }
 
