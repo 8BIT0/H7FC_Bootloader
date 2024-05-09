@@ -362,7 +362,8 @@ static bool TaskFrameCTL_Port_DeInit(void)
     /* disable radio port */
     for (; port_index < RADIO_UART_NUM; port_index ++)
     {
-        // BspUart.de_init();
+        if (!BspUart.de_init(PortMonitor.Uart_Port[port_index].Obj))
+            break;
     }
 
     if (vcp_state && (port_index == RADIO_UART_NUM))
