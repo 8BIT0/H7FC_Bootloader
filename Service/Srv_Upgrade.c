@@ -267,6 +267,8 @@ static bool SrvUpgrade_CheckAppAddr(uint32_t addr, uint32_t size)
 
 static void SrvUpgrade_JumpTo(void)
 {
+    uint32_t jump_addr = 0;
+
     if (Monitor.JumpAddr && Monitor.AppSize && SrvUpgrade_CheckAppAddr(Monitor.JumpAddr, Monitor.AppSize))
     {
         /* log out jump addr and app size */
@@ -278,9 +280,9 @@ static void SrvUpgrade_JumpTo(void)
         /* disable all interrupt before jump to app */
         SrvOsCommon.disable_all_irq();
 
-        Monitor.JumpAddr = *(volatile uint32_t *)(Monitor.JumpAddr + 4);
+        jump_addr = *(volatile uint32_t *)(Monitor.JumpAddr + 4);
         __set_MSP(*(volatile uint32_t *)Monitor.JumpAddr);
-        ((Application_Func)Monitor.JumpAddr)();
+        ((Application_Func)jump_addr)();
     }
     else
         Monitor.PollingState = Stage_JumpError;

@@ -162,7 +162,7 @@ void TaskFrameCTL_Init(uint32_t period)
         FrameCTL_Period = period;
 
     JumpState_PortPipe.data_addr = DataPipe_DataObjAddr(t_PortState);
-    JumpState_PortPipe.data_addr = DataPipe_DataSize(t_PortState);
+    JumpState_PortPipe.data_size = DataPipe_DataSize(t_PortState);
     JumpState_PortPipe.trans_finish_cb = TaskPortCTL_PipeSendCallback;
     DataPipe_Enable(&JumpState_PortPipe);
 
