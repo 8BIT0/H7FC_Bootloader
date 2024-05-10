@@ -62,6 +62,14 @@ typedef enum
     Stage_Unknow,
 } SrvUpgrade_Stage_List;
 
+typedef enum
+{
+    PortProc_None = 0,
+    PortProc_Rec_UpdataSig,
+    PortProc_Deal_TimeOut,
+    PortProc_Unknown,
+} SrvUpgrade_PortDataProc_List;
+
 typedef struct
 {
     SrvUpgrade_Stage_List stage;

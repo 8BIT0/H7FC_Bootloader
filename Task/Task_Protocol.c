@@ -13,9 +13,6 @@
 #endif
 
 DataPipe_CreateDataObj(SrvUpgrade_State_TypeDef, t_PortState);
-static SrvUpgrade_State_TypeDef BootState = {
-    .stage = Stage_Init,
-};
 
 #define PROTO_STREAM_BUF_SIZE 1024
 #define VCP_CONNECT_TIMEOUT 50      /* unit: ms */
@@ -173,7 +170,6 @@ void TaskFrameCTL_Init(uint32_t period)
 void TaskFrameCTL_Core(void *arg)
 {
     uint32_t per_time = SrvOsCommon.get_os_ms();
-    uint8_t t_buf[] = "test\r\n";
 
     while(1)
     {
@@ -351,7 +347,6 @@ static uint32_t TaskFrameCTL_Set_RadioPort(FrameCTL_PortType_List port_type, uin
 /************************************** receive process callback section *************************/
 static bool TaskFrameCTL_Port_DeInit(void)
 {
-    bool state = false;
     static bool vcp_state = false;
     static uint8_t port_index = 0;
 
@@ -484,10 +479,11 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
                     CLI_Monitor.port_addr = p_RecObj->PortObj_addr;
                     memcpy(CLI_Monitor.p_rx_stream->p_buf + CLI_Monitor.p_rx_stream->size, stream_in.p_buf, stream_in.size);
                     CLI_Monitor.p_rx_stream->size += p_stream->size;
+                
+                    memset(p_stream->p_buf, 0, p_stream->size);
+                    p_stream->size = 0;
                 }
             }
-        
-            memset(p_stream->p_buf, 0, p_stream->max_size);
         }
     }
 }
@@ -584,11 +580,7 @@ static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_
 /***************************************** Frame mavlink Receive Callback ************************************/
 static void TaskFrameCTL_ConfigureStateCheck(void)
 {
-    uint32_t tunning_time_stamp = 0;
-    uint32_t tunning_port = 0;
-    bool tunning_state = false;
     uint32_t cur_time = SrvOsCommon.get_os_ms();
-    bool lst_vcp_state = false;
 
     PortMonitor.vcp_connect_state = false;
 
@@ -720,14 +712,17 @@ static void TaskFermeCTL_CLI_DisableControl(void)
 }
 SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, CLI_Disable,  TaskFermeCTL_CLI_DisableControl, CLI Enable Control);
 
-static void TaskFrameCTL_FileAccept()
+static void TaskFrameCTL_FileAccept_Enable(void)
 {
     Shell *shell_obj = Shell_GetInstence();
 
     if (shell_obj)
     {
+        shellPrint(shell_obj, "\r\n\r\n");
+        shellPrint(shell_obj, "Waitting Firmware\r\n");
 
     }
 }
-SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, Wait_File, TaskFrameCTL_FileAccept, In File Receive Mode);
+SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, Wait_File, TaskFrameCTL_FileAccept_Enable, In File Receive Mode);
+
 

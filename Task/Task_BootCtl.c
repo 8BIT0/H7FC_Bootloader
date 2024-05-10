@@ -14,9 +14,6 @@
 #define RunningStage On_Boot
 
 DataPipe_CreateDataObj(SrvUpgrade_State_TypeDef, t_BootState);
-static SrvUpgrade_State_TypeDef PortState = {
-    .All_Port_Disabled = false,
-};
 
 typedef enum
 {
@@ -65,11 +62,9 @@ void TaskBootCtl_Init(uint32_t period)
 void TaskBootCtl_Core(const void *argument)
 {
     uint32_t pre_time = SrvOsCommon.get_os_ms();
-    uint32_t sys_time = 0;
 
     while(1)
     {
-        sys_time = SrvOsCommon.get_os_ms();
         DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling();
         DataPipe_SendTo(&JumpState_BootPipe, &JumpState_PortPipe);
 

@@ -3,7 +3,10 @@
 #include "../System/storage/Storage.h"
 #include "Bsp_Flash.h"
 
-#define DEFAULT_WINDOW_SIZE 100 /* unit: ms */
+#define FIRMWARE_WAITTING_TIMEOUT   5000    /* unit: ms */
+#define FIRMWARE_PROTO_TIMEOUT      1000    /* unit: ms */
+#define DEFAULT_WINDOW_SIZE         100     /* unit: ms */
+
 #define BootVer {0, 0, 0}
 #define BootBref "First Version of H7FC Bootloader"
 #define BootCompileData __DATA__
@@ -36,6 +39,7 @@ typedef struct
 
     SrvUpgrade_CodeStage_List CodeStage;
     SrvUpgrade_Stage_List PollingState;
+    SrvUpgrade_PortDataProc_List PortDataState;
     SrvUpgrade_ParamValid_List ParamStatus;
     UpgradeInfo_TypeDef Info;
     
@@ -166,6 +170,14 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     return false;
 }
 
+static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
+{
+    switch((uint8_t) Monitor.PortDataState)
+    {
+        default: return PortProc_Unknown;
+    }
+}
+
 static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
 {
     Storage_ItemSearchOut_TypeDef search_out;
@@ -209,12 +221,16 @@ static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
             }
             else
             {
-                /* wait data from port input */
+
             }
+            return Stage_Wait_PortData;
+
+        case Stage_Processing_PortData:
+            SrvUpgrade_PortProcPolling();
             return Monitor.PollingState;
 
         case Stage_ReadyToJump:
-            break;
+            return Stage_ReadyToJump;
 
         case Stage_JumpError: return Stage_JumpError;
         default: return Stage_Unknow;
