@@ -48,6 +48,9 @@ void TaskBootCtl_Init(uint32_t period)
 {
     SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
     
+    /* read model type from storage */
+    // SrvActuator.init();
+
     memset(&JumpState_BootPipe, 0, sizeof(JumpState_BootPipe));
     JumpState_BootPipe.data_addr = DataPipe_DataObjAddr(t_BootState);
     JumpState_BootPipe.data_size = DataPipe_DataSize(t_BootState);
