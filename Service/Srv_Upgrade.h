@@ -33,16 +33,8 @@ typedef enum
     FileType_None = 0,
     FileType_APP,
     FileType_Boot,
-    FileType_Telemtry,
-} Frimware_FileType_List;
-
-typedef struct
-{
-    uint8_t  type;
-    uint32_t tar_addr;
-    uint32_t size;
-    uint8_t ver[3];
-} FrimwareInfo_TypeDef;
+    FileType_Module,
+} Firmware_FileType_List;
 
 typedef enum
 {
@@ -64,9 +56,21 @@ typedef enum
 
 typedef enum
 {
+    Decode_None = 0,
+    Decode_Pack_Incompelet,
+    Decode_Failed,
+    Decode_Successed,
+} PortData_DecodeState_List;
+
+typedef enum
+{
     PortProc_None = 0,
-    PortProc_Rec_UpdataSig,
+    PortProc_Check_FileAdapter_EnableSig,
+    PortProc_Check_FirmwareInfo,
+    /* receive firmware pack stage */
+    PortProc_Deal_Error,
     PortProc_Deal_TimeOut,
+    PortProc_InValid_Data,
     PortProc_Unknown,
 } SrvUpgrade_PortDataProc_List;
 
@@ -77,6 +81,15 @@ typedef struct
 } SrvUpgrade_State_TypeDef;
 
 #pragma pack(1)
+typedef struct
+{
+    uint8_t  type;
+    uint8_t id;
+    uint32_t store_addr;
+    uint32_t size;
+    uint8_t ver[3];
+} FirmwareInfo_TypeDef;
+
 typedef struct
 {
     UpgradeReg_TypeDef reg;

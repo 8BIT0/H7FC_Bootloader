@@ -52,6 +52,9 @@ typedef struct
     uint32_t JumpAddr;
     uint32_t AppSize;
 
+    FirmwareInfo_TypeDef Firmware_Info;
+    bool buf_accessing;
+    PortData_DecodeState_List DataDecode_State;
     uint8_t buf[FIRMWARE_MAX_READ_SIZE];
     uint16_t buf_size;
 
@@ -98,6 +101,13 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
 
     /* get data from storage */
     memset(&Monitor.Info, 0, sizeof(UpgradeInfo_TypeDef));
+    Monitor.LogOut_Info_size = 0;
+
+    memset(Monitor.LogOut_Info, 0, sizeof(Monitor.LogOut_Info));
+    Monitor.LogOut_Info_size = 0;
+
+    memset(Monitor.buf, 0, FIRMWARE_MAX_READ_SIZE);
+    Monitor.buf_size = 0;
     
     SrvUpgrade_Collect_Info("[SrvUpgrade Init]\r\n");
     SrvUpgrade_Collect_Info("\tOn Boot Stage\r\n");
@@ -126,16 +136,16 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
             case On_Boot:
                 if (Monitor.Info.reg.bit.App || Monitor.Info.reg.bit.Module)
                     Monitor.ParamStatus = UpgradeParam_Valid;
+
                 /* update app address and app size */
                 break;
 
             default:
                 Monitor.ParamStatus = UpgradeParam_InValid;
-                return false;
+                break;
         }
         
         Monitor.CodeStage = stage;
-        return true;
     }
     
     if (Monitor.ParamStatus == UpgradeParam_InValid)
@@ -167,13 +177,43 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
 
     Monitor.init_state = true;
     Monitor.PollingState = Stage_Init;
-    return false;
+    Monitor.PortDataState = PortProc_None;
+    return true;
+}
+
+static PortData_DecodeState_List SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataProc_List stage)
+{
+    uint8_t id = 0;
+
+
+    if (Monitor.buf_size)
+    {
+        Monitor.buf_accessing = true;
+        
+        /* deal with buf */
+
+        Monitor.buf_accessing = false;
+    }
+
+    return Decode_Failed;
 }
 
 static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
 {
     switch((uint8_t) Monitor.PortDataState)
     {
+        case PortProc_None:
+            Monitor.PortDataState = PortProc_Check_FileAdapter_EnableSig;
+        
+        case PortProc_Check_FileAdapter_EnableSig:
+            if (SrvUpgrade_RecData_Decode(PortProc_Check_FileAdapter_EnableSig) == Decode_Successed)
+            {
+
+            }
+            else
+                Monitor.PortDataState = 
+            return Monitor.PortDataState;
+
         default: return PortProc_Unknown;
     }
 }
@@ -181,11 +221,11 @@ static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
 static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
 {
     Storage_ItemSearchOut_TypeDef search_out;
-    FrimwareInfo_TypeDef FrimInfo;
+    FirmwareInfo_TypeDef FrimInfo;
     uint32_t sys_time = SrvOsCommon.get_os_ms();
 
     memset(&search_out, 0, sizeof(Storage_ItemSearchOut_TypeDef));
-    memset(&FrimInfo, 0, sizeof(FrimwareInfo_TypeDef));
+    memset(&FrimInfo, 0, sizeof(FirmwareInfo_TypeDef));
 
     switch ((uint8_t) Monitor.PollingState)
     {
@@ -221,7 +261,10 @@ static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
             }
             else
             {
-
+                /* check stream */
+                if (Monitor.buf_size)
+                    /* receive data from port */
+                    Monitor.PollingState = Stage_Processing_PortData;
             }
             return Stage_Wait_PortData;
 
