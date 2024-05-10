@@ -184,7 +184,7 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
 static PortData_DecodeState_List SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataProc_List stage)
 {
     uint8_t id = 0;
-
+    uint8_t module_id = 0;
 
     if (Monitor.buf_size)
     {
@@ -200,18 +200,25 @@ static PortData_DecodeState_List SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataPr
 
 static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
 {
+    PortData_DecodeState_List decode_state = Decode_None;
+
     switch((uint8_t) Monitor.PortDataState)
     {
         case PortProc_None:
             Monitor.PortDataState = PortProc_Check_FileAdapter_EnableSig;
         
         case PortProc_Check_FileAdapter_EnableSig:
-            if (SrvUpgrade_RecData_Decode(PortProc_Check_FileAdapter_EnableSig) == Decode_Successed)
+            decode_state = SrvUpgrade_RecData_Decode(PortProc_Check_FileAdapter_EnableSig);
+            if (decode_state == Decode_Successed)
             {
 
             }
-            else
-                Monitor.PortDataState = 
+            else if (decode_state == Decode_Failed)
+            {
+                Monitor.PortDataState = PortProc_None;
+                Monitor.PollingState = Stage_Wait_PortData;
+            }
+
             return Monitor.PortDataState;
 
         default: return PortProc_Unknown;
