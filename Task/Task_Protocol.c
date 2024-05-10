@@ -437,6 +437,8 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
             p_stream->size = 0;
         }
 
+        /* if currently is in firmware pack receive mode disable mavlink message and cli recevie */
+
         stream_in = SrvComProto.msg_decode(InUsePort_MavMsgInput_Obj, p_stream->p_buf, p_stream->size);
     
         /* noticed when drone is under disarmed state we can`t tune or send cli to drone for safety */

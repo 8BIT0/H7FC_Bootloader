@@ -291,7 +291,14 @@ static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
 {
     if (p_buf && len)
     {
+        if (!Monitor.buf_accessing)
+        {
 
+        }
+        else
+        {
+            /* set callback when buf is quit with accessing */
+        }
     }
 }
 
