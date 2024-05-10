@@ -297,7 +297,7 @@ static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
         }
         else
         {
-            /* set callback when buf is quit with accessing */
+            /* set callback called when buf is quit with accessing */
         }
     }
 }
