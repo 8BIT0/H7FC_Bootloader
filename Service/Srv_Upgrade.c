@@ -269,9 +269,6 @@ static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(uint32_t sys_time
             Monitor.PollingState = Stage_Wait_PortData;
             return PortProc_Deal_TimeOut;
 
-        case PortProc_Check_FirmwareInfo:
-            return Monitor.PortDataState;
-
         default: return PortProc_Unknown;
     }
 }
@@ -340,15 +337,17 @@ static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
 
 static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
 {
-    if (p_buf && len)
+    if (Monitor.init_state && p_buf && len)
     {
         if (!Monitor.buf_accessing)
         {
             Monitor.rec_time = SrvOsCommon.get_os_ms();
-        }
-        else
-        {
-            /* set callback called when buf is quit with accessing */
+
+            if ((Monitor.buf_size + len) <= FIRMWARE_MAX_READ_SIZE)
+            {
+                memcpy(Monitor.buf + Monitor.buf_size, p_buf, len);
+                Monitor.buf_size += len;
+            }
         }
     }
 }
