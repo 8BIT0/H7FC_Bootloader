@@ -1,5 +1,6 @@
 #include "Task_BootCtl.h"
 #include "Srv_OsCommon.h"
+#include "Srv_Actuator.h"
 #include "Srv_Upgrade.h"
 #include "Storage.h"
 #include "DataPipe.h"
