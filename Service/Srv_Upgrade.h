@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "Srv_FileAdapter.h"
 
 #define MAX_BOOTLOADER_FRIMWARE_SIZE (64 * 1024)
 #define Max_App_Num 32
@@ -81,6 +82,17 @@ typedef struct
 } SrvUpgrade_State_TypeDef;
 
 #pragma pack(1)
+typedef struct
+{
+    Firmware_FileType_List file_type;
+    Adapter_ProtoType_List adapter_frame;
+    uint32_t byte_sum;
+    uint16_t pack_sum;
+
+    /* only used by app firmware */
+    uint32_t jump_addr;
+} Upgrade_FileInfo_TypeDef;
+
 typedef struct
 {
     uint8_t  type;

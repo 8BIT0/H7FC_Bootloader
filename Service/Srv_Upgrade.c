@@ -55,13 +55,23 @@ typedef struct
     FirmwareInfo_TypeDef Firmware_Info;
     uint32_t rec_time;
     bool buf_accessing;
-    PortData_DecodeState_List DataDecode_State;
     uint8_t buf[FIRMWARE_MAX_READ_SIZE];
     uint16_t buf_size;
 
     uint8_t LogOut_Info[1024];
     uint16_t LogOut_Info_size;
 } SrvUpgradeMonitor_TypeDef;
+
+typedef struct
+{
+    PortData_DecodeState_List state;
+
+    uint8_t *buf_head;
+    uint16_t buf_size;
+
+    uint8_t *p_buf;
+    uint16_t len;
+} SrvUpgrade_DecodeOut_TypeDef;
 
 /* internal virable */
 static SrvUpgradeMonitor_TypeDef Monitor = {
@@ -182,26 +192,38 @@ static bool SrvUpgrade_Init(SrvUpgrade_CodeStage_List stage, uint32_t window_siz
     return true;
 }
 
-static PortData_DecodeState_List SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataProc_List stage)
+static SrvUpgrade_DecodeOut_TypeDef SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataProc_List stage)
 {
     uint8_t id = 0;
     uint8_t module_id = 0;
-
+    SrvUpgrade_DecodeOut_TypeDef decode_out;
+    
+    memset(&decode_out, 0, sizeof(SrvUpgrade_DecodeOut_TypeDef));
     if (Monitor.buf_size)
     {
         Monitor.buf_accessing = true;
         
         /* deal with buf */
+        switch ((uint8_t) stage)
+        {
+            case PortProc_Check_FileAdapter_EnableSig:
+                break;
+            
+            default:
+                decode_out.state = Decode_Failed;
+                break;
+        }
 
         Monitor.buf_accessing = false;
     }
 
-    return Decode_Failed;
+    return decode_out;
 }
 
 static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(uint32_t sys_time)
 {
-    PortData_DecodeState_List decode_state = Decode_None;
+    SrvUpgrade_DecodeOut_TypeDef decode_out;
+    memset(&decode_out, 0, sizeof(SrvUpgrade_DecodeOut_TypeDef));
 
     switch((uint8_t) Monitor.PortDataState)
     {
@@ -209,12 +231,14 @@ static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(uint32_t sys_time
             Monitor.PortDataState = PortProc_Check_FileAdapter_EnableSig;
         
         case PortProc_Check_FileAdapter_EnableSig:
-            decode_state = SrvUpgrade_RecData_Decode(PortProc_Check_FileAdapter_EnableSig);
-            if (decode_state == Decode_Successed)
+            decode_out = SrvUpgrade_RecData_Decode(PortProc_Check_FileAdapter_EnableSig);
+            if (decode_out.p_buf && decode_out.len && (decode_out.state == Decode_Successed))
             {
+                /* deal with buf */
 
+                Monitor.PortDataState = PortProc_Check_FirmwareInfo;
             }
-            else if (decode_state == Decode_Failed)
+            else if (decode_out.state == Decode_Failed)
             {
                 Monitor.PortDataState = PortProc_None;
                 Monitor.PollingState = Stage_Wait_PortData;
@@ -225,10 +249,25 @@ static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(uint32_t sys_time
                 if (sys_time >= Monitor.rec_time)
                 {
                     /* process time out */
-                    
+                    Monitor.PortDataState = PortProc_Deal_TimeOut;
                 }
             }
             return Monitor.PortDataState;
+        
+        case PortProc_Check_FirmwareInfo:
+            return PortProc_Check_FirmwareInfo;
+
+        case PortProc_Deal_Error:
+            Monitor.PortDataState = PortProc_None;
+            Monitor.PollingState = Stage_Wait_PortData;
+
+            /* clear firmware info in storag */
+            return PortProc_Deal_Error;
+
+        case PortProc_Deal_TimeOut:
+            Monitor.PortDataState = PortProc_None;
+            Monitor.PollingState = Stage_Wait_PortData;
+            return PortProc_Deal_TimeOut;
 
         case PortProc_Check_FirmwareInfo:
             return Monitor.PortDataState;

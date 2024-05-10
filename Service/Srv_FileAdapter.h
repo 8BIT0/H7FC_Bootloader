@@ -19,23 +19,15 @@ typedef void (*SrvFileAdapter_Send_Func)(uint8_t *p_buf, uint16_t len);
 
 typedef enum
 {
-    Adapter_FC_APP = 0,
-    Adapter_FC_Boot,
-    Adapter_FC_TelemtryReceiver,
-} SrvFileAdapter_FileType_List;
-
-typedef enum
-{
     SrvFileAdapter_Frame_None = 0,
     SrvFileAdapter_Frame_YModem,
     SrvFileAdapter_Frame_Sum,
-} SrvFileAdapter_ProtoFrameType_List;
+} Adapter_ProtoType_List;
 
 typedef struct
 {
     uint32_t port_addr;
-    SrvFileAdapter_FileType_List file_type;
-    SrvFileAdapter_ProtoFrameType_List frame_type;
+    Adapter_ProtoType_List frame_type;
 
     void *FrameObj;
     void *FrmaeApi;
