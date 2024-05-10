@@ -53,6 +53,7 @@ typedef struct
     uint32_t AppSize;
 
     FirmwareInfo_TypeDef Firmware_Info;
+    uint32_t rec_time;
     bool buf_accessing;
     PortData_DecodeState_List DataDecode_State;
     uint8_t buf[FIRMWARE_MAX_READ_SIZE];
@@ -198,7 +199,7 @@ static PortData_DecodeState_List SrvUpgrade_RecData_Decode(SrvUpgrade_PortDataPr
     return Decode_Failed;
 }
 
-static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
+static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(uint32_t sys_time)
 {
     PortData_DecodeState_List decode_state = Decode_None;
 
@@ -218,7 +219,18 @@ static SrvUpgrade_PortDataProc_List SrvUpgrade_PortProcPolling(void)
                 Monitor.PortDataState = PortProc_None;
                 Monitor.PollingState = Stage_Wait_PortData;
             }
+            else
+            {
+                /* check time out */
+                if (sys_time >= Monitor.rec_time)
+                {
+                    /* process time out */
+                    
+                }
+            }
+            return Monitor.PortDataState;
 
+        case PortProc_Check_FirmwareInfo:
             return Monitor.PortDataState;
 
         default: return PortProc_Unknown;
@@ -276,7 +288,7 @@ static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(void)
             return Stage_Wait_PortData;
 
         case Stage_Processing_PortData:
-            SrvUpgrade_PortProcPolling();
+            SrvUpgrade_PortProcPolling(sys_time);
             return Monitor.PollingState;
 
         case Stage_ReadyToJump:
@@ -293,7 +305,7 @@ static void SrvUpgrade_Parse(uint8_t *p_buf, uint16_t len)
     {
         if (!Monitor.buf_accessing)
         {
-
+            Monitor.rec_time = SrvOsCommon.get_os_ms();
         }
         else
         {
