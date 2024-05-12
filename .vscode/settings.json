@@ -20,7 +20,8 @@
         "bsp_dma.h": "c",
         "kernel.h": "c",
         "bsp_uart.h": "c",
-        "datapipe.h": "c"
+        "datapipe.h": "c",
+        "bsp_timer_port_def.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

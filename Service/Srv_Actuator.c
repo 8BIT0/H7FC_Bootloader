@@ -104,7 +104,28 @@ SrvActuator_TypeDef SrvActuator = {
 
 static bool SrvActuator_DeInit(void)
 {
-    return false;
+    SrvActuator_ModelComponentNum_TypeDef actuator_num;
+    uint8_t i = 0;
+    memset(&actuator_num, 0, sizeof(SrvActuator_ModelComponentNum_TypeDef));
+
+    if (SrvActuator_Obj.init)
+    {
+        actuator_num = SrvActuator_Obj.drive_module.num;
+
+        /* deinit moto timer */
+        for (i = 0; i < actuator_num.moto_cnt; i ++)
+        {
+            
+        }
+
+        /* deinit servo timer */
+        for (i = 0; i < actuator_num.servo_cnt; i++)
+        {
+
+        }
+    }
+
+    return true;
 }
 
 static bool SrvActuator_Init(SrvActuator_Setting_TypeDef cfg)
