@@ -18,6 +18,8 @@
 #define MAX_PWM_OUT 4
 #endif
 
+#define ACTUATOR_STORAGE_SECTION_NAME "Actuator_Para"
+
 #define SRVACTUATOR_PB0_SIG_1       \
     (SrvActuator_PeriphSet_TypeDef) \
     {                               \
@@ -366,6 +368,7 @@ typedef struct
 typedef struct
 {
     bool (*init)(SrvActuator_Setting_TypeDef cfg);
+    bool (*de_init)(void);
     SrvActuator_Setting_TypeDef (*default_param)(void);
     bool (*lock)(void);
     void (*moto_control)(uint16_t *p_val);

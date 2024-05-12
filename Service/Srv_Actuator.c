@@ -72,7 +72,9 @@ static bool SrvActuator_Config_MotoSpinDir(void);
 static bool SrvActuator_QuadDrone_MotoMixControl(uint16_t *rc_ctl);
 
 /* external function */
+static bool SrvActuator_DeInit(void);
 static bool SrvActuator_Init(SrvActuator_Setting_TypeDef cfg);
+static bool SrvActuator_DeInit(void);
 static void SrvActuator_MotoControl(uint16_t *p_val);
 static bool SrvActuator_InvertMotoSpinDir(uint8_t component_index);
 static bool SrvActuator_Lock(void);
@@ -87,6 +89,7 @@ static SrvActuator_Setting_TypeDef SrvActuator_Default_Setting(void);
 /* external variable */
 SrvActuator_TypeDef SrvActuator = {
     .init = SrvActuator_Init,
+    .de_init = SrvActuator_DeInit,
     .lock = SrvActuator_Lock,
     .moto_control = SrvActuator_MotoControl,
     .invert_spin = SrvActuator_InvertMotoSpinDir,
@@ -98,6 +101,11 @@ SrvActuator_TypeDef SrvActuator = {
     .servo_direct_drive = SrvActuator_Servo_DirectDrive,
     .default_param = SrvActuator_Default_Setting,
 };
+
+static bool SrvActuator_DeInit(void)
+{
+    return false;
+}
 
 static bool SrvActuator_Init(SrvActuator_Setting_TypeDef cfg)
 {

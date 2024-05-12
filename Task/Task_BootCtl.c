@@ -46,10 +46,27 @@ static void TaskBootCTL_PipeSendCallback(void *pipe_obj);
 
 void TaskBootCtl_Init(uint32_t period)
 {
-    SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
-    
+    SrvActuator_Setting_TypeDef actuator_cfg;
+    Storage_ItemSearchOut_TypeDef search_out;
+
+    memset(&search_out, 0, sizeof(Storage_ItemSearchOut_TypeDef));
+    memset(&actuator_cfg, 0, sizeof(SrvActuator_Setting_TypeDef));
+
     /* read model type from storage */
-    // SrvActuator.init();
+    search_out = Storage.search(External_Flash, Para_User, ACTUATOR_STORAGE_SECTION_NAME); 
+    if (search_out.item_addr)
+    {
+        /* parameter matched */
+        /* update actuator setting config data from storage */
+        if ((search_out.item.len != sizeof(SrvActuator_Setting_TypeDef)) || \
+            (Storage.get(External_Flash, Para_User, search_out.item, &actuator_cfg, sizeof(actuator_cfg)) != Storage_Error_None))
+            actuator_cfg = SrvActuator.default_param();
+    }
+    else
+        actuator_cfg = SrvActuator.default_param();
+
+    SrvActuator.init(actuator_cfg);
+    SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
 
     memset(&JumpState_BootPipe, 0, sizeof(JumpState_BootPipe));
     JumpState_BootPipe.data_addr = DataPipe_DataObjAddr(t_BootState);
@@ -69,6 +86,8 @@ void TaskBootCtl_Core(const void *argument)
 
     while(1)
     {
+        SrvActuator.lock();
+
         DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling();
         DataPipe_SendTo(&JumpState_BootPipe, &JumpState_PortPipe);
 
@@ -84,7 +103,6 @@ void TaskBootCtl_Core(const void *argument)
 
             default: break;
         }
-
         SrvOsCommon.precise_delay(&pre_time, BootMonitor.period);
     }
 }
