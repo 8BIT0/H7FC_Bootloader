@@ -24,6 +24,7 @@
  */
 #include "Srv_Actuator.h"
 #include "Srv_OsCommon.h"
+#include "datapipe.h"
 
 const SrvActuator_PeriphSet_TypeDef SrvActuator_Periph_List[Actuator_PWM_SigSUM] = {
     SRVACTUATOR_PB0_SIG_1,
@@ -64,15 +65,14 @@ const uint8_t default_sig_serial[Actuator_PWM_SigSUM] = {
 /* internal variable */
 SrvActuatorObj_TypeDef SrvActuator_Obj;
 SrcActuatorCTL_Obj_TypeDef SrvActuator_ControlStream;
-SrvActuatorPipeData_TypeDef Proto_Actuator_Data;
 
 /* internal function */
-static void SrcActuator_Get_ChannelRemap(void);
+static void SrcActuator_Get_ChannelRemap(SrvActuator_Setting_TypeDef cfg);
 static bool SrvActuator_Config_MotoSpinDir(void);
 static bool SrvActuator_QuadDrone_MotoMixControl(uint16_t *rc_ctl);
 
 /* external function */
-static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type);
+static bool SrvActuator_Init(SrvActuator_Setting_TypeDef cfg);
 static void SrvActuator_MotoControl(uint16_t *p_val);
 static bool SrvActuator_InvertMotoSpinDir(uint8_t component_index);
 static bool SrvActuator_Lock(void);
@@ -82,6 +82,7 @@ static bool SrvActuator_Get_MotoControlRange(uint8_t moto_index, int16_t *min, i
 static bool SrvActuator_Get_ServoControlRange(uint8_t servo_index, int16_t *min, int16_t *idle, int16_t *max);
 static bool SrvActuator_Moto_DirectDrive(uint8_t index, uint16_t value);
 static bool SrvActuator_Servo_DirectDrive(uint8_t index, uint16_t value);
+static SrvActuator_Setting_TypeDef SrvActuator_Default_Setting(void);
  
 /* external variable */
 SrvActuator_TypeDef SrvActuator = {
@@ -95,14 +96,15 @@ SrvActuator_TypeDef SrvActuator = {
     .get_servo_control_range = SrvActuator_Get_ServoControlRange,
     .moto_direct_drive = SrvActuator_Moto_DirectDrive,
     .servo_direct_drive = SrvActuator_Servo_DirectDrive,
+    .default_param = SrvActuator_Default_Setting,
 };
 
-static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type)
+static bool SrvActuator_Init(SrvActuator_Setting_TypeDef cfg)
 {
     memset(&SrvActuator_Obj, 0, sizeof(SrvActuator_Obj));
     memset(&SrvActuator_ControlStream, 0, sizeof(SrvActuator_ControlStream));
 
-    switch (model)
+    switch (cfg.model)
     {
     case Model_Quad:
         SrvActuator_Obj.drive_module.num = QUAD_CONTROL_COMPONENT;
@@ -140,7 +142,7 @@ static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type)
 
     /* read in storage */
     /* current use default */
-    SrvActuator_Obj.model = model;
+    SrvActuator_Obj.model = cfg.model;
 
     /* malloc dshot esc driver obj for using */
     SrvActuator_Obj.drive_module.obj_list = (SrvActuator_PWMOutObj_TypeDef *)SrvOsCommon.malloc(sizeof(SrvActuator_PWMOutObj_TypeDef) * SrvActuator_Obj.drive_module.num.total_cnt);
@@ -156,12 +158,12 @@ static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type)
         /* default init */
         for (uint8_t i = 0; i < SrvActuator_Obj.drive_module.num.moto_cnt; i++)
         {
-            switch (esc_type)
+            switch (cfg.esc_type)
             {
             case Actuator_DevType_DShot150:
             case Actuator_DevType_DShot300:
             case Actuator_DevType_DShot600:
-                SrvActuator_Obj.drive_module.obj_list[i].drv_type = esc_type;
+                SrvActuator_Obj.drive_module.obj_list[i].drv_type = cfg.esc_type;
 
                 SrvActuator_Obj.drive_module.obj_list[i].ctl_val = DSHOT_LOCK_THROTTLE;
                 SrvActuator_Obj.drive_module.obj_list[i].min_val = DSHOT_MIN_THROTTLE;
@@ -200,8 +202,8 @@ static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type)
 
     /* check value remap relationship */
     /* we can read this info from storage module */
-    SrcActuator_Get_ChannelRemap();
-    SrvActuator_Config_MotoSpinDir();
+    SrcActuator_Get_ChannelRemap(cfg);
+    // SrvActuator_Config_MotoSpinDir();
 
     SrvActuator_Lock();
 
@@ -209,21 +211,34 @@ static bool SrvActuator_Init(SrvActuator_Model_List model, uint8_t esc_type)
     return true;
 }
 
-static void SrcActuator_Get_ChannelRemap(void)
+static SrvActuator_Setting_TypeDef SrvActuator_Default_Setting(void)
 {
-    uint8_t storage_serial[SrvActuator_Obj.drive_module.num.moto_cnt + SrvActuator_Obj.drive_module.num.servo_cnt];
+    SrvActuator_Setting_TypeDef default_setting;
+    memset(&default_setting, 0, sizeof(SrvActuator_Setting_TypeDef));
+
+    default_setting.model = Model_Quad;
+    default_setting.esc_type = DevDshot_300;
+
+    default_setting.moto_num = 4;
+    default_setting.servo_num = 0;
+
+    memcpy(default_setting.pwm_ch_map, default_sig_serial, 4);
+
+    return default_setting;
+}
+
+static void SrcActuator_Get_ChannelRemap(SrvActuator_Setting_TypeDef cfg)
+{
     SrvActuator_PeriphSet_TypeDef *periph_ptr = NULL;
 
     /* get remap relationship */
-    memcpy(storage_serial, default_sig_serial, sizeof(storage_serial)); // only for develop stage...
-
     /* moto section */
     if (SrvActuator_Obj.drive_module.num.moto_cnt)
     {
         for (uint8_t i = 0; i < SrvActuator_Obj.drive_module.num.moto_cnt; i++)
         {
-            SrvActuator_Obj.drive_module.obj_list[i].sig_id = storage_serial[storage_serial[i]];
-            SrvActuator_Obj.drive_module.obj_list[i].periph_ptr = (SrvActuator_PeriphSet_TypeDef *)&SrvActuator_Periph_List[storage_serial[i]];
+            SrvActuator_Obj.drive_module.obj_list[i].sig_id = cfg.pwm_ch_map[i];
+            SrvActuator_Obj.drive_module.obj_list[i].periph_ptr = (SrvActuator_PeriphSet_TypeDef *)&SrvActuator_Periph_List[cfg.pwm_ch_map[i]];
             periph_ptr = SrvActuator_Obj.drive_module.obj_list[i].periph_ptr;
 
             DevDshot.init(SrvActuator_Obj.drive_module.obj_list[i].drv_obj,
@@ -233,6 +248,7 @@ static void SrcActuator_Get_ChannelRemap(void)
     }
 
     /* servo section */
+    /* stilling in developping */
     if (SrvActuator_Obj.drive_module.num.servo_cnt)
     {
         for (uint8_t i = SrvActuator_Obj.drive_module.num.moto_cnt; i < SrvActuator_Obj.drive_module.num.total_cnt; i++)
@@ -264,7 +280,7 @@ static bool SrvActuator_Lock(void)
             return false;
         }
     }
-
+    
     return true;
 }
 

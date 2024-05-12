@@ -10,6 +10,14 @@
 #include "Dev_Dshot.h"
 #include "HW_Def.h"
 
+#if defined BATEAT32F435_AIO
+#define MAX_PWM_OUT 6
+#elif defined MATEKH743_V1_5
+#define MAX_PWM_OUT 8
+#else
+#define MAX_PWM_OUT 4
+#endif
+
 #define SRVACTUATOR_PB0_SIG_1       \
     (SrvActuator_PeriphSet_TypeDef) \
     {                               \
@@ -343,9 +351,22 @@ typedef struct
     uint16_t servo[8];
 } SrvActuatorPipeData_TypeDef;
 
+#pragma pack(1)
 typedef struct
 {
-    bool (*init)(SrvActuator_Model_List model, uint8_t esc_type);
+    SrvActuator_Model_List model;
+    
+    uint8_t moto_num;
+    uint8_t esc_type;
+    uint8_t servo_num;
+    uint8_t pwm_ch_map[MAX_PWM_OUT]; /* pwm channel map [moto + servo] moto pwm channle at the head pos */
+} SrvActuator_Setting_TypeDef;
+#pragma pack()
+
+typedef struct
+{
+    bool (*init)(SrvActuator_Setting_TypeDef cfg);
+    SrvActuator_Setting_TypeDef (*default_param)(void);
     bool (*lock)(void);
     void (*moto_control)(uint16_t *p_val);
     void (*servo_conttol)(uint8_t index, uint16_t val);
