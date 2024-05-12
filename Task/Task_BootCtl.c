@@ -96,6 +96,8 @@ void TaskBootCtl_Core(const void *argument)
             case Stage_ReadyToJump:
                 if (Boot_PipeUpdate && DataPipe_DataObj(t_BootState).All_Port_Disabled)
                 {
+                    /* disable all actuator irq */
+
                     SrvUpgrade.jump();
                     Boot_PipeUpdate = false;
                 }
