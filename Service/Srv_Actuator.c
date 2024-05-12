@@ -106,24 +106,39 @@ static bool SrvActuator_DeInit(void)
 {
     SrvActuator_ModelComponentNum_TypeDef actuator_num;
     SrvActuator_PWMOutObj_TypeDef *PWM_List = NULL;
-    uint8_t i = 0;
+    static uint8_t m_i = 0;
+    static uint8_t s_i = 0;
 
     memset(&actuator_num, 0, sizeof(SrvActuator_ModelComponentNum_TypeDef));
 
     if (SrvActuator_Obj.init)
     {
         actuator_num = SrvActuator_Obj.drive_module.num;
+        PWM_List = SrvActuator_Obj.drive_module.obj_list;
 
-        /* deinit moto timer */
-        for (i = 0; i < actuator_num.moto_cnt; i ++)
+        if (PWM_List)
         {
-            
-        }
+            /* deinit moto timer */
+            for (; m_i < actuator_num.moto_cnt; m_i ++)
+            {
+                switch(PWM_List[m_i].drv_type)
+                {
+                    case DevDshot_150:
+                    case DevDshot_300:
+                    case DevDshot_600:
+                        DevDshot.de_init(PWM_List[m_i].drv_obj);
+                        break;
 
-        /* deinit servo timer */
-        for (i = 0; i < actuator_num.servo_cnt; i++)
-        {
+                    default: break;
+                }
+            }
 
+            /* deinit servo timer */
+            /* still in developping */
+            for (; s_i < actuator_num.servo_cnt; s_i ++)
+            {
+
+            }
         }
     }
 
