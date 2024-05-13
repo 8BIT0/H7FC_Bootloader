@@ -185,6 +185,8 @@ static BspUSB_Error_List BspUSB_Init(uint32_t cus_data_addr)
 
 static BspUSB_Error_List BspUSB_DeInit(void)
 {
+    crm_periph_clock_enable(OTG_PIN_GPIO_CLOCK, FALSE);
+    crm_periph_reset(CRM_OTGFS1_PERIPH_CLOCK, FALSE);
     crm_periph_clock_enable(CRM_OTGFS1_PERIPH_CLOCK, FALSE);
     nvic_irq_disable(OTGFS1_IRQn);
 

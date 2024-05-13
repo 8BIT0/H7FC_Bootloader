@@ -351,7 +351,7 @@ static bool TaskFrameCTL_Port_DeInit(void)
     static uint8_t port_index = 0;
 
     /* disable usb vcp */
-    if (!vcp_state || (BspUSB_VCP.de_init() == BspUSB_Error_None))
+    if (!vcp_state && (BspUSB_VCP.de_init() == BspUSB_Error_None))
         vcp_state = true;
 
     /* disable radio port */
