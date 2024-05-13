@@ -21,7 +21,9 @@
         "kernel.h": "c",
         "bsp_uart.h": "c",
         "datapipe.h": "c",
-        "bsp_timer_port_def.h": "c"
+        "bsp_timer_port_def.h": "c",
+        "at32f435_437_dma.h": "c",
+        "bsp_dma_port_def.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

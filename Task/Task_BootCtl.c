@@ -97,6 +97,10 @@ void TaskBootCtl_Core(const void *argument)
                 if (Boot_PipeUpdate && DataPipe_DataObj(t_BootState).All_Port_Disabled)
                 {
                     /* disable all actuator irq */
+                    SrvActuator.de_init();
+
+                    /* disabel data pipe */
+                    DataPipe_DeInit();
 
                     SrvUpgrade.jump();
                     Boot_PipeUpdate = false;
