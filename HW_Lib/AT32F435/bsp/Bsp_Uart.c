@@ -434,6 +434,9 @@ static bool BspUart_DeInit(BspUARTObj_TypeDef *obj)
 
         BspUart_SetIRQ(obj, false);
 
+        BspGPIO.de_init(obj->rx_io);
+        BspGPIO.de_init(obj->tx_io);
+
         /* deinit uart port */
         usart_reset(To_Uart_Instance(obj->instance));
     }
