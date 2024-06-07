@@ -52,15 +52,11 @@ Service/Srv_Upgrade.c \
 Service/Srv_Actuator.c \
 Service/Srv_ComProto.c \
 Service/Srv_OsCommon.c \
-Service/Srv_FileAdapter.c \
 DataStructure/Data_Convert_Util.c \
 DataStructure/CusQueue.c \
 DataStructure/linked_list.c \
 DataStructure/binary_tree.c \
-common/Error_Log/error_log.c \
-common/YModem/YModem.c \
 common/util.c \
-common/compess/minilzo.c \
 System/storage/Storage.c \
 System/DataPipe/DataPipe_Def.c \
 System/DataPipe/DataPipe.c \
@@ -253,8 +249,6 @@ C_INCLUDES =  \
 -ITask/ \
 -IDevice/ \
 -Icommon/ \
--Icommon/Error_Log \
--Icommon/YModem \
 -Icommon/compess \
 -Icommon/gen_physic_def \
 -IService/ \

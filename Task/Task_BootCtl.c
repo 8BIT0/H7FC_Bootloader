@@ -90,7 +90,7 @@ void TaskBootCtl_Core(const void *argument)
         sys_time = SrvOsCommon.get_os_ms();
         SrvActuator.lock();
 
-        DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling(sys_time, NULL);
+        DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling(sys_time);
         DataPipe_SendTo(&JumpState_BootPipe, &JumpState_PortPipe);
 
         switch ((uint8_t)DataPipe_DataObj(t_BootState).stage)

@@ -7,6 +7,7 @@
 #include "Dev_W25Qxx.h"
 #include "Srv_OsCommon.h"
 #include "util.h"
+#include "../FCHW_Config.h"
 
 typedef uint32_t storage_handle;
 
@@ -260,7 +261,6 @@ typedef struct
     uint16_t module_prod_type;
     uint16_t module_prod_code;
 
-    Storage_FlashInfo_TypeDef internal_info;
     Storage_FlashInfo_TypeDef external_info;
 } Storage_Monitor_TypeDef;
 

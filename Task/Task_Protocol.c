@@ -2,7 +2,6 @@
 #include "Srv_OsCommon.h"
 #include "HW_Def.h"
 #include "Srv_ComProto.h"
-#include "Srv_FileAdapter.h"
 #include "Srv_Upgrade.h"
 #include "../FCHW_Config.h"
 #include "DataPipe.h"
@@ -713,18 +712,3 @@ static void TaskFermeCTL_CLI_DisableControl(void)
     }
 }
 SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, CLI_Disable,  TaskFermeCTL_CLI_DisableControl, CLI Enable Control);
-
-static void TaskFrameCTL_FileAccept_Enable(void)
-{
-    Shell *shell_obj = Shell_GetInstence();
-
-    if (shell_obj)
-    {
-        shellPrint(shell_obj, "\r\n\r\n");
-        shellPrint(shell_obj, "Waitting Firmware\r\n");
-
-    }
-}
-SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, Wait_File, TaskFrameCTL_FileAccept_Enable, In File Receive Mode);
-
-

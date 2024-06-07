@@ -6,7 +6,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include "Srv_FileAdapter.h"
 
 #define Max_App_Num 32
 
@@ -19,26 +18,12 @@ typedef enum
 typedef enum
 {
     Stage_Init = 0,
-    Stage_Reboot,
-    Stage_UpgradeInfo_Error,
-    Stage_Adapter_Error,
-    Stage_FileInfo_Error,
     Stage_Process_PortData,
     Stage_Upgrade_Error,
-    Stage_PortData_Error,
-    Stage_TimeOut,
     Stage_ReadyToJump,
     Stage_Upgrade_Finish,
     Stage_Unknow,
 } SrvUpgrade_Stage_List;
-
-typedef enum
-{
-    Decode_None = 0,
-    Decode_Pack_Incompelet,
-    Decode_Failed,
-    Decode_Successed,
-} PortData_DecodeState_List;
 
 typedef enum
 {
@@ -73,6 +58,15 @@ typedef union
 
 typedef struct
 {
+    uint8_t File_Type;
+    uint8_t Adapter_Type;
+    uint8_t SW_Ver[3];
+    uint8_t HW_Ver[3];
+    uint32_t File_Size;
+} FileInfo_TypeDef;
+
+typedef struct
+{
     SrvUpgrade_CTLReg_TypeDef CTLReg;
     FileInfo_TypeDef BF_Info;   /* boot firmware info */
     FileInfo_TypeDef AF_Info;   /* app firmware info */
@@ -82,12 +76,10 @@ typedef struct
 typedef struct
 {
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
-    SrvUpgrade_Stage_List (*polling)(uint32_t sys_time, SrvFileAdapter_Send_Func send);
-    void (*set_fileinfo)(const FileInfo_TypeDef info);
+    SrvUpgrade_Stage_List (*polling)(uint32_t sys_time);
     void (*jump)(void);
     uint16_t (*get_log)(uint8_t *p_info, uint16_t len);
     void (*clear_log)(void);
-    bool (*push_data)(uint32_t sys_time, uint8_t *p_buf, uint16_t len);
 } SrvUpgrade_TypeDef;
 
 extern const uint8_t HWVer[3];
