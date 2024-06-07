@@ -8,14 +8,14 @@
 
 #define SrvFileAdapter_TimeOut (10 * 1000)  /* time out 10s */
 
-typedef struct
-{
-    uint16_t total_size;
-    uint16_t cur_size;
-    uint8_t *buf;
-} SrvFileAdapter_Stream_TypeDef;
-
 typedef void (*SrvFileAdapter_Send_Func)(uint8_t *p_buf, uint16_t len);
+
+typedef enum
+{
+    FileType_None = 0,
+    FileType_APP,
+    FileType_Boot,
+} Firmware_FileType_List;
 
 typedef enum
 {
@@ -24,30 +24,55 @@ typedef enum
     SrvFileAdapter_Frame_Sum,
 } Adapter_ProtoType_List;
 
+typedef enum
+{
+    Adapter_Idle = 0,
+    Adapter_Processing,
+    Adapter_Proc_Done,
+    Adapter_Proc_Failed,
+} Adapter_Polling_State;
+
+typedef enum
+{
+    Pack_Invalid = 0,
+    Pack_InCompelete,
+    Pack_Compelete,
+    Pack_Unknow_State,
+} Adapter_PackState_List;
+
 typedef struct
 {
-    uint32_t port_addr;
+    Firmware_FileType_List File_Type;
+    Adapter_ProtoType_List Adapter_Type;
+    uint8_t SW_Ver[3];
+    uint8_t HW_Ver[3];
+    uint32_t File_Size;
+} FileInfo_TypeDef;
+
+typedef struct
+{
+    uint32_t sys_time;
     Adapter_ProtoType_List frame_type;
 
     void *FrameObj;
-    void *FrmaeApi;
+    void *FrameApi;
 
-    bool is_actived;
     bool chancel;
     bool ready_to_rec;
+    void *stream_out;
     
-    SrvFileAdapter_Send_Func send;
+    FileInfo_TypeDef file_info;
+    uint32_t store_addr_offset;
 } SrvFileAdapterObj_TypeDef;
 
 typedef struct
 {
-    SrvFileAdapterObj_TypeDef* (*create)(Adapter_ProtoType_List proto_type, uint32_t stream_size);
+    SrvFileAdapterObj_TypeDef* (*create)(Adapter_ProtoType_List proto_type, FileInfo_TypeDef file_info);
+    bool (*push_to_stream)(uint8_t *p_buf, uint16_t size);
     bool (*destory)(SrvFileAdapterObj_TypeDef *p_Adapter);
     void (*set_send)(SrvFileAdapterObj_TypeDef *p_Adapter, SrvFileAdapter_Send_Func send_cb);
-    bool (*is_active)(SrvFileAdapterObj_TypeDef *p_Adapter);
-    bool (*bind_port)(SrvFileAdapterObj_TypeDef *p_Adapter, uint32_t port_addr);
-    void (*polling)(SrvFileAdapterObj_TypeDef *p_Adapter);
-    void (*parse)(SrvFileAdapterObj_TypeDef *p_Adapter, const SrvFileAdapter_Stream_TypeDef stream);
+    Adapter_Polling_State (*polling)(uint32_t sys_time, SrvFileAdapterObj_TypeDef *p_Adapter);
+    FileInfo_TypeDef (*get_file_info)(SrvFileAdapterObj_TypeDef *p_Adapter);
 } SrvFileAdapter_TypeDef;
 
 extern SrvFileAdapter_TypeDef SrvFileAdapter;

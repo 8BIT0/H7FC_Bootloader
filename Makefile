@@ -62,7 +62,6 @@ common/YModem/YModem.c \
 common/util.c \
 common/compess/minilzo.c \
 System/storage/Storage.c \
-System/Reboot/reboot.c \
 System/DataPipe/DataPipe_Def.c \
 System/DataPipe/DataPipe.c \
 System/FreeRTOS/croutine.c \
@@ -278,7 +277,6 @@ C_INCLUDES =  \
 -IMAVLink/standard \
 -IDataStructure/ \
 -ISystem/kernel/ \
--ISystem/Reboot/ \
 -IHW_Lib/Port_Def/
 ifeq ($(BUILD_TYPE), $(HW_MATEK_STM32H743))
 C_INCLUDES +=  \

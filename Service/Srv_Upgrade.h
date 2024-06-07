@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include "Srv_FileAdapter.h"
 
-#define MAX_BOOTLOADER_FRIMWARE_SIZE (64 * 1024)
 #define Max_App_Num 32
 
 typedef enum
@@ -17,41 +16,19 @@ typedef enum
     On_App,
 } SrvUpgrade_CodeStage_List;
 
-typedef union
-{
-    uint8_t val;
-
-    struct
-    {
-        uint8_t Boot    : 1;
-        uint8_t App     : 1;
-        uint8_t Module  : 1;
-    } bit;
-} UpgradeReg_TypeDef;
-
-typedef enum
-{
-    FileType_None = 0,
-    FileType_APP,
-    FileType_Boot,
-    FileType_Module,
-} Firmware_FileType_List;
-
 typedef enum
 {
     Stage_Init = 0,
-    Stage_Wait_PortData,
-    Stage_Checking_App_Firmware,
-    Stage_Checking_Module_Firmware,
-    Stage_FirmwareData_Error,
-    Stage_Processing_PortData,
+    Stage_Reboot,
+    Stage_UpgradeInfo_Error,
+    Stage_Adapter_Error,
+    Stage_FileInfo_Error,
+    Stage_Process_PortData,
+    Stage_Upgrade_Error,
     Stage_PortData_Error,
-    Stage_Proto_TimeOut,
-    Stage_App_Upgrading,
-    Stage_Module_Upgrading,
+    Stage_TimeOut,
     Stage_ReadyToJump,
-    Stage_JumpToTarget,
-    Stage_JumpError,
+    Stage_Upgrade_Finish,
     Stage_Unknow,
 } SrvUpgrade_Stage_List;
 
@@ -66,10 +43,10 @@ typedef enum
 typedef enum
 {
     PortProc_None = 0,
-    PortProc_Check_FileAdapter_EnableSig,
-    PortProc_Check_FirmwareInfo,
+    PortProc_Deal_Pack,
     /* receive firmware pack stage */
     PortProc_Deal_Error,
+    ProtProc_Finish,
     PortProc_Deal_TimeOut,
     PortProc_InValid_Data,
     PortProc_Unknown,
@@ -82,44 +59,39 @@ typedef struct
 } SrvUpgrade_State_TypeDef;
 
 #pragma pack(1)
-typedef struct
+typedef union
 {
-    Firmware_FileType_List file_type;
-    Adapter_ProtoType_List adapter_frame;
-    uint32_t byte_sum;
-    uint16_t pack_sum;
+    uint8_t val;
 
-    /* only used by app firmware */
-    uint32_t jump_addr;
-} Upgrade_FileInfo_TypeDef;
-
-typedef struct
-{
-    uint8_t  type;
-    uint8_t id;
-    uint32_t store_addr;
-    uint32_t size;
-    uint8_t ver[3];
-} FirmwareInfo_TypeDef;
+    struct
+    {
+        uint8_t Boot   : 1;
+        uint8_t App    : 1;
+        uint8_t res    : 6;
+    } bit;
+} SrvUpgrade_CTLReg_TypeDef;
 
 typedef struct
 {
-    UpgradeReg_TypeDef reg;
-    uint32_t app_num;
-    uint32_t app_addr_list[Max_App_Num];
-    uint32_t jump_addr;
-} UpgradeInfo_TypeDef;
+    SrvUpgrade_CTLReg_TypeDef CTLReg;
+    FileInfo_TypeDef BF_Info;   /* boot firmware info */
+    FileInfo_TypeDef AF_Info;   /* app firmware info */
+} SrvUpgradeInfo_TypeDef;
 #pragma pack()
 
 typedef struct
 {
     bool (*init)(SrvUpgrade_CodeStage_List stage, uint32_t window_size);
-    SrvUpgrade_Stage_List (*polling)(void);
+    SrvUpgrade_Stage_List (*polling)(uint32_t sys_time, SrvFileAdapter_Send_Func send);
+    void (*set_fileinfo)(const FileInfo_TypeDef info);
     void (*jump)(void);
     uint16_t (*get_log)(uint8_t *p_info, uint16_t len);
     void (*clear_log)(void);
+    bool (*push_data)(uint32_t sys_time, uint8_t *p_buf, uint16_t len);
 } SrvUpgrade_TypeDef;
 
+extern const uint8_t HWVer[3];
+extern const uint8_t AppVer[3];
 extern SrvUpgrade_TypeDef SrvUpgrade;
 
 #endif

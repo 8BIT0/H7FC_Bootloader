@@ -8,9 +8,9 @@
 #include "Storage.h"
 #include "shell_port.h"
 #include "util.h"
-#include "../../FCHW_Config.h"
 #include "HW_Def.h"
 #include "Srv_OsCommon.h"
+#include "../../FCHW_Config.h"
 
 #define InternalFlash_BootDataSec_Size (4 Kb)
 #define InternalFlash_SysDataSec_Size (16 Kb)
@@ -47,9 +47,9 @@ static bool Storage_OnChipFlash_Erase(uint32_t addr_offset, uint32_t len);
 static bool Storage_Clear_Tab(StorageIO_TypeDef *storage_api, uint32_t addr, uint32_t tab_num);
 static bool Storage_Establish_Tab(Storage_MediumType_List type, Storage_ParaClassType_List class);
 
-static bool Storage_ExtFlash_Read(uint32_t addr_offset, uint8_t *p_data, uint32_t len);
-static bool Storage_ExtFlash_Write(uint32_t addr_offset, uint8_t *p_data, uint32_t len);
-static bool Storage_ExtFlash_Erase(uint32_t addr_offset, uint32_t len);
+static bool Storage_ExtFlash_ParaSec_Read(uint32_t addr_offset, uint8_t *p_data, uint32_t len);
+static bool Storage_ExtFlash_ParaSec_Write(uint32_t addr_offset, uint8_t *p_data, uint32_t len);
+static bool Storage_ExtFlash_ParaSec_Erase(uint32_t addr_offset, uint32_t len);
 static bool Storage_ExtFlash_EraseAll(void);
 
 StorageIO_TypeDef InternalFlash_IO = {
@@ -60,10 +60,10 @@ StorageIO_TypeDef InternalFlash_IO = {
 };
 
 StorageIO_TypeDef ExternalFlash_IO = {
-    .erase = Storage_ExtFlash_Erase,
+    .erase = Storage_ExtFlash_ParaSec_Erase,
     .erase_all = Storage_ExtFlash_EraseAll,
-    .read = Storage_ExtFlash_Read,
-    .write = Storage_ExtFlash_Write,
+    .read = Storage_ExtFlash_ParaSec_Read,
+    .write = Storage_ExtFlash_ParaSec_Write,
 };
 
 /* internal function */
@@ -91,6 +91,10 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
 static Storage_ErrorCode_List Storage_Get_Data(Storage_MediumType_List medium, Storage_ParaClassType_List class, Storage_Item_TypeDef item, uint8_t *p_data, uint16_t size);
 static bool Stroeage_IsAvaliable(Storage_MediumType_List medium);
 
+static bool Storage_Firmware_Format(Storage_FirmwareType_List type);
+static bool Storage_Frimware_Read(Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_data, uint16_t size);
+static bool Storage_Firmware_Write(Storage_MediumType_List medium, Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_data, uint16_t size);
+
 Storage_TypeDef Storage = {
     .init = Storage_Init,
     .search = Storage_Search,
@@ -98,6 +102,10 @@ Storage_TypeDef Storage = {
     .get = Storage_Get_Data,
     .update = Storage_SlotData_Update,
     .avaliable = Stroeage_IsAvaliable,
+
+    .format_firmware = Storage_Firmware_Format,
+    .read_firmware = Storage_Frimware_Read,
+    .write_firmware = Storage_Firmware_Write,
 };
 
 static bool Stroeage_IsAvaliable(Storage_MediumType_List medium)
@@ -776,10 +784,10 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
     Storage_BaseSecInfo_TypeDef *p_Sec = NULL;
     Storage_DataSlot_TypeDef *p_slotdata = NULL;
     uint8_t *p_read_tmp = page_data_tmp;
+    uint8_t *crc_buf = NULL;
     uint16_t crc = 0;
     uint32_t read_addr = 0;
     uint32_t read_size = 0;
-    uint32_t update_size = 0;
     uint32_t valid_data_size = 0;
     uint8_t align_byte = 0;
 
@@ -829,8 +837,6 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
     else
         align_byte = 0;
 
-    update_size = size + align_byte;
-
     /* get data slot first */
     if (!StorageIO_API->read(read_addr, p_read_tmp, sizeof(Storage_DataSlot_TypeDef)))
         return Storage_Read_Error;
@@ -842,10 +848,9 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
         (p_slotdata->total_data_size > p_Sec->data_sec_size))
         return Storage_DataInfo_Error;
 
-    if (p_slotdata->total_data_size != update_size)
+    if (p_slotdata->total_data_size != (size + align_byte))
         return Storage_Update_DataSize_Error;
 
-    update_size = 0;
     read_size = p_slotdata->total_data_size + sizeof(Storage_DataSlot_TypeDef);
     p_read_tmp = page_data_tmp;
     memset(p_read_tmp, 0, sizeof(Storage_DataSlot_TypeDef));
@@ -892,16 +897,18 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
         if (p_slotdata->align_size >= STORAGE_DATA_ALIGN)
             return Storage_DataInfo_Error;
 
+        crc_buf = p_read_tmp;
         memcpy(p_read_tmp, p_data, (p_slotdata->cur_slot_size - p_slotdata->align_size));
         p_read_tmp += p_slotdata->cur_slot_size - p_slotdata->align_size;
 
         if (p_slotdata->align_size)
-        {
             /* set align byte */
             memset(p_read_tmp, 0, p_slotdata->align_size);
-            p_read_tmp += p_slotdata->align_size;
-        }
-
+        
+        p_read_tmp += p_slotdata->align_size;
+        /* update crc */
+        crc = Common_CRC16(crc_buf, p_slotdata->cur_slot_size) ;
+        
         valid_data_size += p_slotdata->cur_slot_size - p_slotdata->align_size;
         if (p_slotdata->nxt_addr == 0)
         {
@@ -911,8 +918,6 @@ static Storage_ErrorCode_List Storage_SlotData_Update(Storage_MediumType_List ty
                 return Storage_Update_DataSize_Error;
         }
 
-        /* update crc */
-        crc = Common_CRC16(p_data, p_slotdata->cur_slot_size) ;
         memcpy(p_read_tmp, &crc, sizeof(crc));
         
         p_data += p_slotdata->cur_slot_size - p_slotdata->align_size;
@@ -1493,7 +1498,7 @@ static Storage_ErrorCode_List Storage_CreateItem(Storage_MediumType_List type, S
                 if (FreeSlot.cur_slot_size <= sizeof(Storage_DataSlot_TypeDef))
                     return Storage_No_Enough_Space;
 
-                crc_buf = p_data + stored_size;
+                p_data += stored_size;
                 slot_useful_size = FreeSlot.cur_slot_size - sizeof(Storage_DataSlot_TypeDef);
                 /* current have space for new data need to be storage */
                 if (slot_useful_size < storage_data_size)
@@ -1531,9 +1536,6 @@ static Storage_ErrorCode_List Storage_CreateItem(Storage_MediumType_List type, S
 
                 p_Sec->free_space_size -= DataSlot.cur_slot_size;
 
-                /* comput current slot crc */
-                DataSlot.slot_crc = Common_CRC16(crc_buf, DataSlot.cur_slot_size);
-
                 /* write to the data section */
                 /* storage target data */
                 slot_update_ptr = page_data_tmp;
@@ -1549,15 +1551,17 @@ static Storage_ErrorCode_List Storage_CreateItem(Storage_MediumType_List type, S
                 slot_update_ptr += sizeof(DataSlot.nxt_addr);
                 memcpy(slot_update_ptr, &DataSlot.align_size, sizeof(DataSlot.align_size));
                 slot_update_ptr += sizeof(DataSlot.align_size);
-                memcpy(slot_update_ptr, crc_buf, (DataSlot.cur_slot_size - DataSlot.align_size));
+                crc_buf = slot_update_ptr;
+                memcpy(slot_update_ptr, p_data, (DataSlot.cur_slot_size - DataSlot.align_size));
                 slot_update_ptr += (DataSlot.cur_slot_size - DataSlot.align_size);
                 
                 if (DataSlot.align_size)
-                {
                     memset(slot_update_ptr, 0, DataSlot.align_size);
-                    slot_update_ptr += DataSlot.align_size;
-                }
+                
+                slot_update_ptr += DataSlot.align_size;
 
+                /* comput current slot crc */
+                DataSlot.slot_crc = Common_CRC16(crc_buf, DataSlot.cur_slot_size);
                 memcpy(slot_update_ptr, &DataSlot.slot_crc, sizeof(DataSlot.slot_crc));
                 slot_update_ptr += sizeof(DataSlot.slot_crc);
                 memcpy(slot_update_ptr, &DataSlot.end_tag, sizeof(DataSlot.end_tag));
@@ -1584,7 +1588,7 @@ static Storage_ErrorCode_List Storage_CreateItem(Storage_MediumType_List type, S
                 {
                     /* after target data segment stored, shift target data pointer to unstored pos
                         * and update next segment data store address */
-                    p_data += slot_useful_size;
+                    stored_size += slot_useful_size;
                     store_addr = DataSlot.nxt_addr;
                 }
             }
@@ -1976,6 +1980,213 @@ static Storage_BaseSecInfo_TypeDef* Storage_Get_SecInfo(Storage_FlashInfo_TypeDe
     return NULL;
 }
 
+/********************************************** External Firmware Storage API Section ********************************************/
+static bool Storage_Firmware_Format(Storage_FirmwareType_List type)
+{
+    uint32_t format_size = 0;
+    uint32_t erase_addr = 0;
+    Storage_ExtFLashDevObj_TypeDef *dev = NULL;
+
+    if (Storage_Monitor.module_enable_reg.bit.external && \
+        Storage_Monitor.module_init_reg.bit.external && \
+        ExternalFlash_IO.erase && ExternalFlash_IO.read && \
+        (type != Firmware_None) && (type <= Firmware_App))
+    {
+        dev = (Storage_ExtFLashDevObj_TypeDef *)(Storage_Monitor.ExtDev_ptr);
+        if (dev == NULL)
+            return false;
+
+        switch ((uint8_t)type)
+        {
+            case Firmware_App:
+                format_size = App_Firmware_Size;
+                erase_addr = App_Firmware_Addr;
+                break;
+
+            case Firmware_Boot:
+                format_size = Boot_Firmware_Size;
+                erase_addr = Boot_Firmware_Addr;
+                break;
+
+            default: break;
+        }
+
+        if ((format_size % Storage_TabSize) != 0)
+            return false;
+
+        for (uint16_t i = 0; i < format_size / Storage_TabSize; i++)
+        {
+            switch (dev->chip_type)
+            {
+                case Storage_ChipType_W25Qxx:
+                    if (dev->dev_api && dev->dev_obj)
+                    {
+                        if (format_size == 0)
+                            return true;
+
+                        if (To_DevW25Qxx_API(dev->dev_api)->erase_sector(To_DevW25Qxx_OBJ(dev->dev_obj), erase_addr) != DevW25Qxx_Ok)
+                            return false;
+                    
+                        erase_addr += Storage_TabSize;
+                        format_size -= Storage_TabSize;
+                    }
+                    break;
+
+                default: break;
+            }
+        }
+    }
+
+    return false;
+}
+
+static bool Storage_Frimware_Read(Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_data, uint16_t size)
+{
+    uint32_t base_addr = 0;
+    uint32_t firmware_size = 0;
+    uint32_t read_addr = 0;
+    uint32_t section_addr = 0;
+    uint32_t read_size = 0;
+    Storage_ExtFLashDevObj_TypeDef *dev = NULL;
+    dev = (Storage_ExtFLashDevObj_TypeDef *)(Storage_Monitor.ExtDev_ptr);
+
+    if (dev && p_data && size)
+    {
+        switch ((uint8_t)type)
+        {
+            case Firmware_App:
+                base_addr = App_Firmware_Addr;
+                firmware_size = App_Firmware_Size;
+                break;
+
+            case Firmware_Boot:
+                base_addr = Boot_Firmware_Addr;
+                firmware_size = Boot_Firmware_Size;
+                break;
+
+            default: return false;
+        }
+        
+        read_addr = addr_offset + base_addr;
+        while (true)
+        {
+            section_addr = To_DevW25Qxx_API(dev->dev_api)->get_section_start_addr(To_DevW25Qxx_OBJ(dev->dev_obj), read_addr);
+            if (To_DevW25Qxx_API(dev->dev_api)->read(To_DevW25Qxx_OBJ(dev->dev_obj), section_addr, flash_read_tmp, Storage_TabSize) != DevW25Qxx_Ok)
+                return false;
+
+            if ((read_addr + size) > (section_addr + Storage_TabSize))
+            {
+                read_size = Storage_TabSize - (read_addr - section_addr);
+                size -= read_size;
+                p_data += read_size;
+            }
+            else
+            {
+                read_size = size;
+                size = 0;
+            }
+
+            memcpy(p_data, &flash_read_tmp[read_addr - section_addr], read_size);
+            read_addr = section_addr + Storage_TabSize;
+
+            if (size == 0)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+static bool Storage_Firmware_Write(Storage_MediumType_List medium, Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_data, uint16_t size)
+{
+    uint32_t ext_base_addr = 0;
+    uint32_t int_base_addr = 0;
+    uint32_t write_addr = 0;
+    uint32_t section_addr = 0;
+    uint32_t write_size = 0;
+    Storage_ExtFLashDevObj_TypeDef *dev = NULL;
+
+    if (p_data && size)
+    {
+        switch ((uint8_t)type)
+        {
+            case Firmware_Boot:
+                ext_base_addr = Boot_Firmware_Addr;
+                int_base_addr = Boot_Address_Base;
+                break;
+
+            case Firmware_App:
+                ext_base_addr = App_Firmware_Addr;
+                int_base_addr = Default_App_Address;
+                break;
+
+            default: return false;
+        }
+
+        if (medium == Internal_Flash)
+        {
+            write_addr = int_base_addr + addr_offset;
+
+            /* still in developping */
+        
+        }
+        else if (medium == External_Flash)
+        {
+            dev = (Storage_ExtFLashDevObj_TypeDef *)(Storage_Monitor.ExtDev_ptr);
+            if (dev == NULL)
+                return false;
+
+            switch ((uint8_t)dev->chip_type)
+            {
+                case Storage_ChipType_W25Qxx:
+                    write_addr = ext_base_addr + addr_offset;
+                    section_addr = To_DevW25Qxx_API(dev->dev_api)->get_section_start_addr(To_DevW25Qxx_OBJ(dev->dev_obj), write_addr);
+
+                    while (true)
+                    {
+                        if (size == 0)
+                            return true;
+
+                        /* read section first */
+                        memset(flash_read_tmp, 0, Storage_TabSize);
+                        if (To_DevW25Qxx_API(dev->dev_api)->read(To_DevW25Qxx_OBJ(dev->dev_obj), section_addr, flash_read_tmp, Storage_TabSize) != DevW25Qxx_Ok)
+                            return false;
+
+                        /* erase whole section */
+                        if (To_DevW25Qxx_API(dev->dev_api)->erase_sector(To_DevW25Qxx_OBJ(dev->dev_obj), section_addr) != DevW25Qxx_Ok)
+                            return false;
+
+                        if ((write_addr + size) >= (section_addr + Storage_TabSize))
+                        {
+                            write_size = Storage_TabSize - (write_addr - section_addr);
+                            size -= write_size;
+                        }
+                        else
+                        {
+                            write_size = size;
+                            size = 0;
+                        }
+
+                        /* update to flash */
+                        memcpy(&flash_read_tmp[write_addr - section_addr], p_data, write_size);
+                        if (To_DevW25Qxx_API(dev->dev_api)->write(To_DevW25Qxx_OBJ(dev->dev_obj), section_addr, flash_read_tmp, Storage_TabSize) != DevW25Qxx_Ok)
+                            return false;
+
+                        /* update section address */
+                        p_data += write_size;
+                        write_addr += write_size;
+                        section_addr = To_DevW25Qxx_API(dev->dev_api)->get_section_start_addr(To_DevW25Qxx_OBJ(dev->dev_obj), write_addr);
+                    }
+                    break;
+
+                default: return false;
+            }
+        }
+    }
+
+    return false;
+}
+
 /************************************************** External Flash IO API Section ************************************************/
 static bool Storage_External_Chip_W25Qxx_SelectPin_Ctl(bool state)
 {
@@ -2032,7 +2243,8 @@ static uint16_t Storage_External_Chip_W25Qxx_BusTrans(uint8_t *tx, uint8_t *rx, 
     return 0;
 }
 
-static bool Storage_ExtFlash_Read(uint32_t addr_offset, uint8_t *p_data, uint32_t len)
+/************************************************** External Flash Parameter IO API Section ************************************************/
+static bool Storage_ExtFlash_ParaSec_Read(uint32_t addr_offset, uint8_t *p_data, uint32_t len)
 {
     uint32_t read_start_addr = 0;
     uint32_t flash_end_addr = 0;
@@ -2112,7 +2324,7 @@ static bool Storage_ExtFlash_Read(uint32_t addr_offset, uint8_t *p_data, uint32_
     return false;
 }
 
-static bool Storage_ExtFlash_Write(uint32_t addr_offset, uint8_t *p_data, uint32_t len)
+static bool Storage_ExtFlash_ParaSec_Write(uint32_t addr_offset, uint8_t *p_data, uint32_t len)
 {
     uint32_t write_start_addr = 0;
     uint32_t flash_end_addr = 0;
@@ -2208,7 +2420,7 @@ static bool Storage_ExtFlash_Write(uint32_t addr_offset, uint8_t *p_data, uint32
     return false;
 }
 
-static bool Storage_ExtFlash_Erase(uint32_t addr_offset, uint32_t len)
+static bool Storage_ExtFlash_ParaSec_Erase(uint32_t addr_offset, uint32_t len)
 {
     uint32_t erase_start_addr = 0;
     Storage_ExtFLashDevObj_TypeDef *dev = NULL;

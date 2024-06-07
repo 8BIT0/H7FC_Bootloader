@@ -1,7 +1,7 @@
 #ifndef __HW_DEF_H
 #define __HW_DEF_H
 
-#include "bsp/Bsp_GPIO.h"
+#include "Bsp_GPIO.h"
 #include "Bsp_DMA.h"
 #include "../../AT32F435/bsp/Bsp_Uart.h"
 #include "Bsp_IIC.h"
@@ -13,9 +13,25 @@
 /* device support */
 #include "Dev_W25Qxx.h"
 
+#define RECEIVER_PORT UART4
+#define RECEIVER_CRSF_RX_DMA Bsp_DMA_None               // Bsp_DMA_1
+#define RECEIVER_CRSF_RX_DMA_STREAM Bsp_DMA_Stream_None // Bsp_DMA_Stream_4
+#define RECEIVER_CRSF_TX_DMA Bsp_DMA_None               // Bsp_DMA_1
+#define RECEIVER_CRSF_TX_DMA_STREAM Bsp_DMA_Stream_None // Bsp_DMA_Stream_5
+
+#define RECEIVER_SBUS_RX_DMA Bsp_DMA_1
+#define RECEIVER_SBUS_RX_DMA_STREAM Bsp_DMA_Stream_5
+#define RECEIVER_SBUS_TX_DMA Bsp_DMA_1
+#define RECEIVER_SBUS_TX_DMA_STREAM Bsp_DMA_Stream_6
+
+#define CRSF_TX_PIN Uart4_TxPin
+#define CRSF_RX_PIN Uart4_RxPin
+
+#define SBUS_TX_PIN Uart3_TxPin
+#define SBUS_RX_PIN Uart3_RxPin
+
 /* radio port */
 #define RADIO_PORT USART1
-#define RADIO_PORT_BAUD 460800
 #define RADIO_TX_PIN_INIT_STATE GPIO_PULL_NONE
 #define RADIO_RX_PIN_INIT_STATE GPIO_PULL_NONE
 #define RADIO_TX_PIN_ALT GPIO_MUX_7
@@ -28,6 +44,12 @@
 #define RADIO_RX_PIN GPIO_PINS_10
 #define RADIO_TX_PORT &Uart1_Tx_Port
 #define RADIO_RX_PORT &Uart1_Rx_Port
+
+/* IMU SPI */
+#define PriIMU_SPI_BUS SPI1
+
+/* Baro SPI */
+#define Baro_SPI_BUS SPI3
 
 /* PWM IO */
 #define PWM_SIG_1_TIM TMR3
@@ -107,17 +129,17 @@
 #define Boot_Firmware_Addr W25QXX_BASE_ADDRESS 
 #define Boot_Firmware_Size (256 Kb)
 
-#define Other_Firmware_Addr (Boot_Firmware_Addr + Boot_Firmware_Size)
-#define Other_Firmware_Size (512 Kb)
+#define Block_Addr Boot_Firmware_Size + Boot_Firmware_Addr
+#define Block_Size (4 Kb)
 
-#define Reserve_Addr (Other_Firmware_Addr + Other_Firmware_Size)
-#define Reserve_Size ((1 Mb) - (Boot_Firmware_Size + Other_Firmware_Size))
+#define Reserve_Addr (Block_Addr + Block_Size)
+#define Reserve_Size ((1 Mb) - (Block_Addr + Block_Size))
 
-#define ExtFlash_Firmware_Addr (Reserve_Addr + Reserve_Size)
-#define ExtFlash_Firmware_Size (1 Mb)
+#define App_Firmware_Addr (Reserve_Addr + Reserve_Size)
+#define App_Firmware_Size (1 Mb)
 
 #define ExtFlash_Dev_Api (void *)(&DevW25Qxx)
-#define ExtFlash_Start_Addr (ExtFlash_Firmware_Addr + ExtFlash_Firmware_Size)
+#define ExtFlash_Start_Addr (App_Firmware_Addr + App_Firmware_Size)
 
 #define ExtFlash_Storage_DefaultData FLASH_DEFAULT_DATA
 #define ExtFlash_Storage_TotalSize (384 Kb)
@@ -157,6 +179,15 @@ extern BspGPIO_Obj_TypeDef Uart4_TxPin;
 extern BspGPIO_Obj_TypeDef Uart4_RxPin;
 
 extern DevLedObj_TypeDef Led1;
+
+extern BspGPIO_Obj_TypeDef PriIMU_CSPin;
+extern BspGPIO_Obj_TypeDef PriIMU_INTPin;
+extern BspSPI_PinConfig_TypeDef PriIMU_BusPin;
+extern BspSPI_NorModeConfig_TypeDef PriIMU_BusCfg;
+
+extern BspGPIO_Obj_TypeDef Baro_CSPin;
+extern BspSPI_PinConfig_TypeDef Baro_BusPin;
+extern BspSPI_NorModeConfig_TypeDef Baro_BusCfg;
 
 extern BspGPIO_Port_TypeDef PWM_1_Port;
 extern BspGPIO_Port_TypeDef PWM_2_Port;
