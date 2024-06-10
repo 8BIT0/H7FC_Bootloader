@@ -50,7 +50,6 @@ Device/Dev_W25Qxx.c \
 Device/Dev_Dshot.c \
 Service/Srv_Upgrade.c \
 Service/Srv_Actuator.c \
-Service/Srv_ComProto.c \
 Service/Srv_OsCommon.c \
 Service/Srv_FileAdapter.c \
 DataStructure/Data_Convert_Util.c \
@@ -75,12 +74,7 @@ System/FreeRTOS/tasks.c \
 System/FreeRTOS/timers.c \
 System/FreeRTOS/CMSIS_RTOS/cmsis_os.c \
 System/FreeRTOS/portable/MemMang/heap_4.c \
-System/FreeRTOS/portable/GCC/ARM_CM4F/port.c \
-System/shell/shell_cmd_list.c \
-System/shell/shell_companion.c \
-System/shell/shell_ext.c \
-System/shell/shell_port.c \
-System/shell/shell.c
+System/FreeRTOS/portable/GCC/ARM_CM4F/port.c
 ifeq ($(BUILD_TYPE), $(HW_MATEK_STM32H743))
 C_SOURCES +=  \
 Device/Dev_Card.c \
@@ -263,12 +257,10 @@ C_INCLUDES =  \
 -ISystem/FreeRTOS/include \
 -ISystem/FreeRTOS/CMSIS_RTOS \
 -ISystem/FreeRTOS/portable/GCC/ARM_CM4F \
--ISystem/shell \
 -ISystem/storage \
 -ISystem/diskio \
 -ISystem/DataPipe \
 -Idebug \
--IMAVLink \
 -IAlgorithm/Navi_Dep \
 -IAlgorithm/Filter_Dep \
 -IAlgorithm/Control_Dep \

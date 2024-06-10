@@ -1,7 +1,6 @@
 #include "Task_Protocol.h"
 #include "Srv_OsCommon.h"
 #include "HW_Def.h"
-#include "Srv_ComProto.h"
 #include "Srv_FileAdapter.h"
 #include "Srv_Upgrade.h"
 #include "../FCHW_Config.h"
@@ -51,73 +50,42 @@ static FrameCTL_UartPortMonitor_TypeDef Radio_UartPort_List[RADIO_UART_NUM] = {
 #endif
 
 /* internal variable */
-static bool cli_state = false;
 static bool Port_PipeUpdate = false;
 
 /* MAVLink message List */
 
-
-static SrvComProto_MsgObj_TypeDef *InUsePort_MavMsgInput_Obj;
-static SrvComProto_MsgObj_TypeDef DefaultPort_MavMsgInput_Obj;
-static SrvComProto_MsgObj_TypeDef RadioPort_MavMsgInput_Obj;
-
 static FrameCTL_PortMonitor_TypeDef PortMonitor = {.init = false};
 static uint32_t FrameCTL_Period = 0;
-static __attribute__((section(".Perph_Section"))) uint8_t MavShareBuf[1024];
-static __attribute__((section(".Perph_Section"))) uint8_t CLIRxBuf[CLI_FUNC_BUF_SIZE];
-static uint8_t CLIProcBuf[CLI_FUNC_BUF_SIZE];
 static uint8_t Uart_RxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
 static uint8_t Uart_TxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
 static uint8_t USB_RxBuf_Tmp[PROTO_STREAM_BUF_SIZE];
 static uint32_t Radio_Addr = 0;
 static uint32_t USB_VCP_Addr = 0;
 
-static SrvComProto_Stream_TypeDef UartRx_Stream = {
+typedef struct
+{
+    uint8_t *p_buf;
+    uint32_t size;
+    uint32_t max_size;
+} ProtoStream_TypeDef;
+
+static ProtoStream_TypeDef UartRx_Stream = {
     .p_buf = Uart_RxBuf_Tmp,
     .size = 0,
     .max_size = sizeof(Uart_RxBuf_Tmp),
 };
 
-static SrvComProto_Stream_TypeDef Log_Stream = {
+static ProtoStream_TypeDef Log_Stream = {
     .p_buf = Uart_TxBuf_Tmp,
     .size = 0,
     .max_size = sizeof(Uart_TxBuf_Tmp),
 };
 
-static SrvComProto_Stream_TypeDef USBRx_Stream = {
+static ProtoStream_TypeDef USBRx_Stream = {
     .p_buf = USB_RxBuf_Tmp,
     .size = 0,
     .max_size = sizeof(USB_RxBuf_Tmp),
 };
-
-static SrvComProto_Stream_TypeDef MavStream = {
-    .p_buf = MavShareBuf,
-    .size = 0,
-    .max_size = sizeof(MavShareBuf),
-};
-
-static SrvComProto_Stream_TypeDef CLI_RX_Stream = {
-    .p_buf = CLIRxBuf,
-    .size = 0,
-    .max_size = sizeof(CLIRxBuf),
-};
-
-static SrvComProto_Stream_TypeDef CLI_Proc_Stream = {
-    .p_buf = CLIProcBuf,
-    .size = 0,
-    .max_size = sizeof(CLIProcBuf),
-};
-
-static FrameCTL_CLIMonitor_TypeDef CLI_Monitor = {
-    .port_addr = 0,
-    .p_rx_stream = &CLI_RX_Stream,
-    .p_proc_stream = &CLI_Proc_Stream,
-};
-
-/* frame section */
-static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_data, uint16_t size);
-
-/* mavlinke frame decode callback */
 
 /* pipe callback */
 static void TaskPortCTL_PipeSendCallback(void *pipe_obj);
@@ -131,8 +99,6 @@ static void TaskFrameCTL_USB_VCP_Connect_Callback(uint32_t Obj_addr, uint32_t *t
 static uint32_t TaskFrameCTL_Set_RadioPort(FrameCTL_PortType_List port_type, uint16_t index);
 static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t size);
 static bool TaskFrameCTL_DefaultPort_Trans(uint8_t *p_data, uint16_t size);
-static void TaskFrameCTL_CLI_Proc(void);
-static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size);
 static bool TaskFrameCTL_Upgrade_Send(uint8_t *p_buf, uint16_t size);
 static void TaskFrameCTL_ConfigureStateCheck(void);
 
@@ -146,8 +112,6 @@ void TaskFrameCTL_Init(uint32_t period)
 
     /* USB VCP as defaut port to tune parameter and frame porotcol */
     memset(&PortMonitor, 0, sizeof(PortMonitor));
-    memset(&DefaultPort_MavMsgInput_Obj, 0, sizeof(SrvComProto_MsgObj_TypeDef));
-    memset(&RadioPort_MavMsgInput_Obj, 0, sizeof(SrvComProto_MsgObj_TypeDef));
 
     TaskFrameCTL_DefaultPort_Init(&PortMonitor);
     TaskFrameCTL_RadioPort_Init(&PortMonitor);
@@ -162,9 +126,6 @@ void TaskFrameCTL_Init(uint32_t period)
     JumpState_PortPipe.data_size = DataPipe_DataSize(t_PortState);
     JumpState_PortPipe.trans_finish_cb = TaskPortCTL_PipeSendCallback;
     DataPipe_Enable(&JumpState_PortPipe);
-
-    /* Shell Init */
-    Shell_Init(TaskFrameCTL_CLI_Trans, CLI_Monitor.p_proc_stream->p_buf, CLI_Monitor.p_proc_stream->max_size);
 }
 
 void TaskFrameCTL_Core(void *arg)
@@ -176,9 +137,6 @@ void TaskFrameCTL_Core(void *arg)
         /* check vcp connect state */
         TaskFrameCTL_ConfigureStateCheck();
         
-        /* command line process */
-        TaskFrameCTL_CLI_Proc();
-
         /* Log Out upgrade info */
         TaskFrameCTL_UpgradeInfo_Out();
 
@@ -393,11 +351,9 @@ static bool TaskFrameCTL_Port_Tx(uint32_t obj_addr, uint8_t *p_data, uint16_t si
 
 static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data, uint16_t size)
 {
-    SrvComProto_Msg_StreamIn_TypeDef stream_in;
-    SrvComProto_Stream_TypeDef *p_stream = NULL;
+    ProtoStream_TypeDef *p_stream = NULL;
     FrameCTL_PortProtoObj_TypeDef *p_RecObj = NULL;
-    InUsePort_MavMsgInput_Obj = NULL;
-
+    
     /* use mavlink protocol tuning the flight parameter */
     if(p_data && size && RecObj_addr)
     {
@@ -408,18 +364,10 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
         {
             case Port_USB:
                 p_stream = &USBRx_Stream;
-                InUsePort_MavMsgInput_Obj = &DefaultPort_MavMsgInput_Obj;
-
-                if (cli_state)
-                    TaskFrameCTL_DefaultPort_Trans(p_data, size);
                 break;
 
             case Port_Uart:
                 p_stream = &UartRx_Stream;
-                InUsePort_MavMsgInput_Obj = &RadioPort_MavMsgInput_Obj;
-                
-                if (cli_state)
-                    TaskFrameCTL_Port_Tx(p_RecObj->PortObj_addr, p_data, size);
                 break;
 
             default:
@@ -435,57 +383,6 @@ static void TaskFrameCTL_Port_Rx_Callback(uint32_t RecObj_addr, uint8_t *p_data,
         {
             memset(p_stream->p_buf, 0, p_stream->size);
             p_stream->size = 0;
-        }
-
-        /* if currently is in firmware pack receive mode disable mavlink message and cli recevie */
-
-        stream_in = SrvComProto.msg_decode(InUsePort_MavMsgInput_Obj, p_stream->p_buf, p_stream->size);
-    
-        /* noticed when drone is under disarmed state we can`t tune or send cli to drone for safety */
-        if(stream_in.valid)
-        {
-            /* tag on recive time stamp */
-            /* first come first serve */
-            /* in case two different port tuning the same function or same parameter at the same time */
-            /* if attach to configrator or in tunning then lock moto */
-            if(!cli_state)
-            {
-                if (stream_in.pac_type == ComFrame_MavMsg)
-                {
-                    /* check mavlink message frame type */
-                    /* only process mavlink message when cli is disabled */
-
-                    /* after mavlink message processed */
-                    /* deal with stream buffer */
-                    if (p_stream->size > stream_in.size)
-                    {
-                        memmove(p_stream->p_buf, (stream_in.p_buf + stream_in.size), (p_stream->size - stream_in.size));
-                    }
-                    else
-                        memset(p_stream->p_buf, 0, p_stream->size);
-
-                    p_stream->size -= stream_in.size;
-                }
-            }
-            
-            if(stream_in.pac_type == ComFrame_CLI)
-            {
-                /* set current mode as cli mode */
-                /* all command line end up with "\r\n" */
-                /* push string into cli shared stream */
-                if(((CLI_Monitor.port_addr == 0) || (CLI_Monitor.port_addr == p_RecObj->PortObj_addr)) && \
-                   (CLI_Monitor.p_rx_stream->size + p_stream->size) <= CLI_Monitor.p_rx_stream->max_size)
-                {
-                    cli_state = true;
-                    CLI_Monitor.type = p_RecObj->type;
-                    CLI_Monitor.port_addr = p_RecObj->PortObj_addr;
-                    memcpy(CLI_Monitor.p_rx_stream->p_buf + CLI_Monitor.p_rx_stream->size, stream_in.p_buf, stream_in.size);
-                    CLI_Monitor.p_rx_stream->size += p_stream->size;
-                
-                    memset(p_stream->p_buf, 0, p_stream->size);
-                    p_stream->size = 0;
-                }
-            }
         }
     }
 }
@@ -559,33 +456,11 @@ static void TaskFrameCTL_USB_VCP_Connect_Callback(uint32_t Obj_addr, uint32_t *t
     }
 }
 /************************************** USB Only Callback section ********************************************/
-
-static void TaskFrameCTL_MavMsg_Trans(FrameCTL_Monitor_TypeDef *Obj, uint8_t *p_data, uint16_t size)
-{
-    if(Obj && (Obj->frame_type == ComFrame_MavMsg) && Obj->port_addr && p_data && size)
-    {
-        switch((uint8_t)(Obj->port_type))
-        {
-            case Port_Uart:
-                TaskFrameCTL_Port_Tx(Obj->port_addr, p_data, size);
-                break;
-
-            case Port_USB:
-                TaskFrameCTL_DefaultPort_Trans(p_data, size);
-                break;
-
-            default:
-                return;
-        }
-    }
-}
-/***************************************** Frame mavlink Receive Callback ************************************/
 static void TaskFrameCTL_ConfigureStateCheck(void)
 {
     uint32_t cur_time = SrvOsCommon.get_os_ms();
 
     PortMonitor.vcp_connect_state = false;
-
     /* check usb vcp attach state */
     if (BspUSB_VCP.check_connect)
         PortMonitor.vcp_connect_state = BspUSB_VCP.check_connect(cur_time, FrameCTL_Period);
@@ -657,74 +532,3 @@ static void TaskFrameCTL_Upgrade_StateCheck(void)
         Port_PipeUpdate = false;
     }
 }
-
-/***************************************** CLI Section ***********************************************/
-static void TaskFrameCTL_CLI_Proc(void)
-{
-    uint16_t rx_stream_size = 0;
-    Shell *shell_obj = Shell_GetInstence();
-
-    /* check CLI stream */
-    if(shell_obj && CLI_Monitor.p_rx_stream->p_buf && CLI_Monitor.p_rx_stream->size)
-    {
-        rx_stream_size = CLI_Monitor.p_rx_stream->size;
-
-        for(uint16_t i = 0; i < rx_stream_size; i++)
-        {
-            shellHandler(shell_obj, CLI_Monitor.p_rx_stream->p_buf[i]);
-            CLI_Monitor.p_rx_stream->p_buf[i] = 0;
-            CLI_Monitor.p_rx_stream->size --;
-        }
-    }
-}
-
-static int TaskFrameCTL_CLI_Trans(const uint8_t *p_data, uint16_t size)
-{
-    if(p_data && size)
-    {
-        switch ((uint8_t) CLI_Monitor.type)
-        {
-            case Port_Uart:
-                TaskFrameCTL_Port_Tx(CLI_Monitor.port_addr, (uint8_t *)p_data, size);
-                break;
-            
-            case Port_USB:
-                TaskFrameCTL_DefaultPort_Trans((uint8_t *)p_data, size);
-                break; 
-
-            default:
-                break;
-        }
-    }
-
-    return 0;
-}
-
-static void TaskFermeCTL_CLI_DisableControl(void)
-{
-    Shell *shell_obj = Shell_GetInstence();
-    
-    if (shell_obj)
-    {
-        shellPrint(shell_obj, "\r\n\r\n");
-        shellPrint(shell_obj, "CLI Disabled\r\n");
-        cli_state = false;
-        CLI_Monitor.port_addr = 0;
-    }
-}
-SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, CLI_Disable,  TaskFermeCTL_CLI_DisableControl, CLI Enable Control);
-
-static void TaskFrameCTL_FileAccept_Enable(void)
-{
-    Shell *shell_obj = Shell_GetInstence();
-
-    if (shell_obj)
-    {
-        shellPrint(shell_obj, "\r\n\r\n");
-        shellPrint(shell_obj, "Waitting Firmware\r\n");
-
-    }
-}
-SHELL_EXPORT_CMD(SHELL_CMD_PERMISSION(0) | SHELL_CMD_TYPE(SHELL_TYPE_CMD_FUNC) | SHELL_CMD_DISABLE_RETURN, Wait_File, TaskFrameCTL_FileAccept_Enable, In File Receive Mode);
-
-

@@ -4,9 +4,7 @@
 #include "../FCHW_Config.h"
 #include "HW_Def.h"
 #include "Dev_Led.h"
-#include "Srv_ComProto.h"
 #include "Srv_OsCommon.h"
-#include "shell_port.h"
 #include "Storage.h"
 #include "DataPipe.h"
 
@@ -78,10 +76,7 @@ void Task_Manager_CreateTask(void)
         if (!init)
         {
             DataPipe_Init();
-
             Storage.init(storage_module_enable, storage_ExtFlashObj);
-            SrvComProto.init(SrvComProto_Type_MAV, NULL);
-            
             TaskFrameCTL_Init(TaskFrameCTL_Period_Def);
             TaskBootCtl_Init(TaskBootCtl_Period_Def);
 
