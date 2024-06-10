@@ -12,8 +12,6 @@
 #define BOOTCTL_MIN_PERIOD      50  /* 50ms 20Hz */
 #define JUMP_WINDOW_TIME        500 /* default window time */
 
-#define RunningStage On_Boot
-
 DataPipe_CreateDataObj(SrvUpgrade_State_TypeDef, t_BootState);
 
 typedef enum
@@ -53,20 +51,20 @@ void TaskBootCtl_Init(uint32_t period)
     memset(&actuator_cfg, 0, sizeof(SrvActuator_Setting_TypeDef));
 
     /* read model type from storage */
-    search_out = Storage.search(External_Flash, Para_User, ACTUATOR_STORAGE_SECTION_NAME); 
+    search_out = Storage.search(Para_User, ACTUATOR_STORAGE_SECTION_NAME); 
     if (search_out.item_addr)
     {
         /* parameter matched */
         /* update actuator setting config data from storage */
         if ((search_out.item.len != sizeof(SrvActuator_Setting_TypeDef)) || \
-            (Storage.get(External_Flash, Para_User, search_out.item, &actuator_cfg, sizeof(actuator_cfg)) != Storage_Error_None))
+            (Storage.get(Para_User, search_out.item, &actuator_cfg, sizeof(actuator_cfg)) != Storage_Error_None))
             actuator_cfg = SrvActuator.default_param();
     }
     else
         actuator_cfg = SrvActuator.default_param();
 
     SrvActuator.init(actuator_cfg);
-    SrvUpgrade.init(RunningStage, JUMP_WINDOW_TIME);
+    SrvUpgrade.init(JUMP_WINDOW_TIME);
 
     memset(&JumpState_BootPipe, 0, sizeof(JumpState_BootPipe));
     JumpState_BootPipe.data_addr = DataPipe_DataObjAddr(t_BootState);
@@ -83,12 +81,14 @@ void TaskBootCtl_Init(uint32_t period)
 void TaskBootCtl_Core(const void *argument)
 {
     uint32_t pre_time = SrvOsCommon.get_os_ms();
+    uint32_t sys_time = 0;
 
     while(1)
     {
+        sys_time = SrvOsCommon.get_os_ms();
         SrvActuator.lock();
 
-        DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling();
+        DataPipe_DataObj(t_BootState).stage = SrvUpgrade.polling(sys_time);
         DataPipe_SendTo(&JumpState_BootPipe, &JumpState_PortPipe);
 
         switch ((uint8_t)DataPipe_DataObj(t_BootState).stage)

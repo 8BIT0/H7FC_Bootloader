@@ -19,13 +19,14 @@ static bool first_call = true;
 static SrvOsCommon_HeapMonitor_TypeDef OsHeap_Monitor = {0};
 
 /* external vriable */
-uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".OsHeap_Section")));
 
 /* external function */
 static void* SrvOsCommon_Malloc(uint32_t size);
 static void SrvOsCommon_Free(void *ptr);
 static int32_t SrvOsCommon_Delay(uint32_t ms);
 static void SrvOsCommon_DelayUntil(uint32_t *prev_time, uint32_t ms);
+static void SrvOsCommon_Reboot(void);
 
 SrvOsCommon_TypeDef SrvOsCommon = {
     .get_os_ms = osKernelSysTick,
@@ -45,6 +46,7 @@ SrvOsCommon_TypeDef SrvOsCommon = {
     .systimer_enable = Kernel_EnableTimer_IRQ,
     .disable_all_irq = __disable_irq,
     .enable_all_irq = __enable_irq,
+    .reboot = SrvOsCommon_Reboot,
 };
 
 static void* SrvOsCommon_Malloc(uint32_t size)
@@ -131,3 +133,9 @@ static void SrvOsCommon_DelayUntil(uint32_t *prev_time, uint32_t ms)
     if (prev_time && ms)
         osDelayUntil(prev_time, ms);
 }
+
+static void SrvOsCommon_Reboot(void)
+{
+    Kernel_reboot();
+}
+

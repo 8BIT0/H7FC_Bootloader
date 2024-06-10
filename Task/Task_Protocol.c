@@ -1,7 +1,6 @@
 #include "Task_Protocol.h"
 #include "Srv_OsCommon.h"
 #include "HW_Def.h"
-#include "Srv_FileAdapter.h"
 #include "Srv_Upgrade.h"
 #include "../FCHW_Config.h"
 #include "DataPipe.h"

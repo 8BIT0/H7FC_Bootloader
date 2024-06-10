@@ -31,11 +31,11 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Specify the memory areas */
 
 FLASH_SIZE = 1000K;
-DEFAULT_BOOT_SIZE = 128K;
+BOOT_SIZE = 256K;
 
 MEMORY
 {
-FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = FLASH_SIZE
+FLASH (rx)       : ORIGIN = 0x08000000, LENGTH = BOOT_SIZE
 RAM_Perph (xrw)  : ORIGIN = 0x20010000, LENGTH = 32K
 RAM (xrw)        : ORIGIN = 0x20020000, LENGTH = 352K
 }
@@ -43,7 +43,7 @@ RAM (xrw)        : ORIGIN = 0x20020000, LENGTH = 352K
 __rom_s = ORIGIN(FLASH);
 __rom_e = ORIGIN(FLASH) + FLASH_SIZE;
 __boot_s = __rom_s;
-__boot_e = __boot_s + DEFAULT_BOOT_SIZE;
+__boot_e = __boot_s + BOOT_SIZE;
 
 /* Define output sections */
 SECTIONS
@@ -80,12 +80,6 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     
-    . = ALIGN(4);
-
-    . = ALIGN(4);
-    _shell_command_start = .;
-    KEEP (*(shellCommand))
-    _shell_command_end = .;
     . = ALIGN(4);
   } >FLASH
 

@@ -7,6 +7,7 @@
 #include "Dev_W25Qxx.h"
 #include "Srv_OsCommon.h"
 #include "util.h"
+#include "../FCHW_Config.h"
 
 typedef uint32_t storage_handle;
 
@@ -105,6 +106,13 @@ typedef enum
     Para_Sys,
     Para_User,
 } Storage_ParaClassType_List;
+
+typedef enum
+{
+    Firmware_None = 0,
+    Firmware_Boot,
+    Firmware_App,
+} Storage_FirmwareType_List;
 
 #pragma pack(1)
 /* length must be 64Byte */
@@ -253,19 +261,22 @@ typedef struct
     uint16_t module_prod_type;
     uint16_t module_prod_code;
 
-    Storage_FlashInfo_TypeDef internal_info;
     Storage_FlashInfo_TypeDef external_info;
 } Storage_Monitor_TypeDef;
 
 typedef struct
 {
     bool (*init)(Storage_ModuleState_TypeDef enable, Storage_ExtFLashDevObj_TypeDef *ExtDev);
-    Storage_ItemSearchOut_TypeDef (*search)(Storage_MediumType_List medium, Storage_ParaClassType_List class, const char *name);
-    Storage_ErrorCode_List (*create)(Storage_MediumType_List medium, Storage_ParaClassType_List class, const char *name, uint8_t *p_data, uint16_t size);
-    Storage_ErrorCode_List (*update)(Storage_MediumType_List medium, Storage_ParaClassType_List class, uint32_t addr , uint8_t *p_data, uint16_t size);
-    Storage_ErrorCode_List (*get)(Storage_MediumType_List medium, Storage_ParaClassType_List class, Storage_Item_TypeDef item, uint8_t *p_data, uint16_t size);
-    bool (*avaliable)(Storage_MediumType_List medium);
+    Storage_ItemSearchOut_TypeDef (*search)(Storage_ParaClassType_List class, const char *name);
+    Storage_ErrorCode_List (*create)(Storage_ParaClassType_List class, const char *name, uint8_t *p_data, uint16_t size);
+    Storage_ErrorCode_List (*update)(Storage_ParaClassType_List class, uint32_t addr , uint8_t *p_data, uint16_t size);
+    Storage_ErrorCode_List (*get)(Storage_ParaClassType_List class, Storage_Item_TypeDef item, uint8_t *p_data, uint16_t size);
     // bool (*clear)(Storage_T);
+
+    /* firmware section */
+    bool (*format_firmware)(Storage_FirmwareType_List type);
+    bool (*read_firmware)(Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_date, uint16_t size);
+    bool (*write_firmware)(Storage_MediumType_List medium, Storage_FirmwareType_List type, uint32_t addr_offset, uint8_t *p_data, uint16_t size);
 } Storage_TypeDef;
 
 extern Storage_TypeDef Storage;
