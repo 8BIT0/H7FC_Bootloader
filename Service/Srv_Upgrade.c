@@ -172,11 +172,11 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
 
             /* read firmware from storage */
             memset(upgrade_buf, 0, update_size);
-            Storage.read_firmware(Firmware_Boot, addr_offset, upgrade_buf, update_size);
+            Storage.read_firmware(Firmware_App, addr_offset, upgrade_buf, update_size);
 
             SrvOsCommon.enter_critical();
             /* write firmware to boot flash */
-
+            Storage.write_firmware(Internal_Flash, Firmware_App, addr_offset, upgrade_buf, update_size);
             SrvOsCommon.exit_critical();
 
             file_size -= update_size;
