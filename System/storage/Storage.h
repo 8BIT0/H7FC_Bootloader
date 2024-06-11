@@ -199,20 +199,6 @@ typedef struct
 } Storage_ItemSearchOut_TypeDef;
 #pragma pack()
 
-typedef union
-{
-    struct
-    {
-        uint8_t internal : 1;
-        uint8_t res_1    : 3;
-
-        uint8_t external : 1; 
-        uint8_t res_2    : 3;
-    } bit;
-
-    uint8_t val;
-} Storage_ModuleState_TypeDef;
-
 /* hadware flash chip info */
 typedef struct
 {
@@ -239,9 +225,6 @@ typedef struct
 
 typedef struct
 {
-    Storage_ModuleState_TypeDef module_enable_reg;
-    Storage_ModuleState_TypeDef module_init_reg;
-
     uint8_t InternalFlash_Format_cnt;
     uint8_t ExternalFlash_Format_cnt;
     uint8_t ExternalFlash_ReInit_cnt;
@@ -266,7 +249,7 @@ typedef struct
 
 typedef struct
 {
-    bool (*init)(Storage_ModuleState_TypeDef enable, Storage_ExtFLashDevObj_TypeDef *ExtDev);
+    bool (*init)(Storage_ExtFLashDevObj_TypeDef *ExtDev);
     Storage_ItemSearchOut_TypeDef (*search)(Storage_ParaClassType_List class, const char *name);
     Storage_ErrorCode_List (*create)(Storage_ParaClassType_List class, const char *name, uint8_t *p_data, uint16_t size);
     Storage_ErrorCode_List (*update)(Storage_ParaClassType_List class, uint32_t addr , uint8_t *p_data, uint16_t size);

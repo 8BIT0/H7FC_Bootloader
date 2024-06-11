@@ -185,8 +185,8 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
             if (file_size == 0)
             {
                 /* clear upgrade flag */
-                Info.CTLReg.bit.Boot = false;
-                Storage.update(Para_Boot, Monitor.UpgradeInfo_SO.item_addr, (uint8_t *)(&Info), sizeof(SrvUpgradeInfo_TypeDef));
+                Info.CTLReg.bit.App = false;
+                Storage.update(Para_Boot, Monitor.UpgradeInfo_SO.item.data_addr, (uint8_t *)(&Info), sizeof(SrvUpgradeInfo_TypeDef));
                 
                 SrvUpgrade_Collect_Info("[ Upgrading Accomplished ]\r\n");
             }

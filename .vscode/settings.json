@@ -27,5 +27,6 @@
         "util.h": "c",
         "shell_port.h": "c"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "cortex-debug.openocdPath": "D:\\software\\gcc\\tool-openocd-at32\\bin-windows_x86\\openocd_at32.exe",
 }

@@ -45,12 +45,12 @@ static bool BspFlash_Erase(uint32_t addr, uint32_t len)
     uint16_t write_offset = 0;
     uint16_t write_len = 0;
 
-    if ((addr >= FLASH_BASE) && ((addr + len) < FLASH_BLOCK_7_END_ADDR))
+    if ((addr >= FLASH_BASE) && ((addr + len) < FLASH_BLOCK_END_ADDR))
     {
         start_sec = BspFlash_Get_Section_Addr(addr);
         end_sec = BspFlash_Get_Section_Addr(addr + len);
         erase_cnt = (end_sec - start_sec) / FLASH_SECTION_SIZE;
-        write_offset = (addr + len) - end_sec;
+        write_offset = (addr + len) - start_sec;
 
         if (write_offset)
         {
@@ -105,7 +105,7 @@ static bool BspFlash_Erase(uint32_t addr, uint32_t len)
 
 static bool BspFlash_Read(uint32_t addr, uint8_t *p_data, uint32_t len)
 {
-    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_7_END_ADDR) && p_data && len)
+    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_END_ADDR) && p_data && len)
     {
         for (uint32_t i = 0; i < len; i++)
         {
@@ -122,20 +122,20 @@ static bool BspFlash_Read(uint32_t addr, uint8_t *p_data, uint32_t len)
 static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
 {
     uint32_t start_sec = 0;
-    uint32_t end_sec = 0;
+    volatile uint32_t end_sec = 0;
     uint32_t write_cnt = 1;
     uint32_t write_offset = 0;
     uint32_t write_len = FLASH_SECTION_SIZE;
     flash_status_type status = FLASH_OPERATE_DONE;
 
-    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_7_END_ADDR) && p_data && len)
+    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_END_ADDR) && p_data && len)
     {
         flash_unlock();
 
         start_sec = BspFlash_Get_Section_Addr(addr);
         end_sec = BspFlash_Get_Section_Addr(addr + len);
 
-        write_cnt += (start_sec - end_sec) / FLASH_SECTION_SIZE;
+        write_cnt += (end_sec - start_sec) / FLASH_SECTION_SIZE;
         if ((start_sec - end_sec) % FLASH_SECTION_SIZE)
             write_cnt ++;
 
@@ -198,6 +198,9 @@ static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
             len -= write_len;
             p_data += write_len;
 
+            if (len == 0)
+                break;
+
             if(len <= FLASH_SECTION_SIZE)
             {
                 write_len = len;
@@ -215,32 +218,36 @@ static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
 
 static bool BspFlash_NoneCheck_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
 {
-    flash_status_type status = FLASH_OPERATE_DONE;
+    flash_status_type status = FLASH_OPERATE_BUSY;
+    volatile uint8_t test = 0;
 
-    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_7_END_ADDR) && p_data && len)
+    if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_END_ADDR) && p_data && len)
     {
         for(uint32_t i = 0; i < len; i ++)
         {
             status = flash_byte_program(addr, p_data[i]);
-            
-            if(status != FLASH_OPERATE_DONE)
-                return false;
+            while (status != FLASH_OPERATE_DONE)
+            {
+                status = flash_operation_status_get();
+            }
             
             addr ++;
         }
 
         return true;
     }
+    else
+        test ++;
 
     return false;
 }
 
 static uint32_t BspFlash_Get_Section_Addr(uint32_t addr)
 {
-    if ((addr < FLASH_BASE) || (addr > FLASH_BLOCK_7_END_ADDR))
+    if ((addr < FLASH_BASE) || (addr > FLASH_BLOCK_END_ADDR))
         return 0;
 
-    return addr - (addr % FLASH_SECTION_SIZE);
+    return (addr / FLASH_SECTION_SIZE) * FLASH_SECTION_SIZE;
 }
 
 static uint32_t BspFlash_Get_Section_Size(uint8_t sector_id)
