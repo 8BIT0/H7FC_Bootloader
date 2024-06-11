@@ -41,7 +41,7 @@ static bool BspFlash_Erase(uint32_t addr, uint32_t len)
     flash_status_type status;
     uint32_t start_sec = 0;
     uint32_t end_sec = 0;
-    uint8_t erase_cnt = 0;
+    uint8_t erase_cnt = 1;
     uint16_t write_offset = 0;
     uint16_t write_len = 0;
 
@@ -49,8 +49,10 @@ static bool BspFlash_Erase(uint32_t addr, uint32_t len)
     {
         start_sec = BspFlash_Get_Section_Addr(addr);
         end_sec = BspFlash_Get_Section_Addr(addr + len);
-        erase_cnt = (end_sec - start_sec) / FLASH_SECTION_SIZE;
-        write_offset = (addr + len) - start_sec;
+        erase_cnt += (end_sec - start_sec) / FLASH_SECTION_SIZE;
+        if ((end_sec - start_sec) % FLASH_SECTION_SIZE)
+            erase_cnt += 1;
+        write_offset = addr - start_sec;
 
         if (write_offset)
         {
@@ -136,22 +138,19 @@ static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
         end_sec = BspFlash_Get_Section_Addr(addr + len);
 
         write_cnt += (end_sec - start_sec) / FLASH_SECTION_SIZE;
-        if ((start_sec - end_sec) % FLASH_SECTION_SIZE)
+        if ((end_sec - start_sec) % FLASH_SECTION_SIZE)
             write_cnt ++;
 
+        /* read data from section first */
+        if (!BspFlash_Read(start_sec, BspFlash_Cache_tmp, FLASH_SECTION_SIZE))
+            return false;
+ 
         if (addr - start_sec)
-        {
-            /* read data from section first */
-            if (!BspFlash_Read(start_sec, BspFlash_Cache_tmp, FLASH_SECTION_SIZE))
-                return false;
-            
             write_offset = addr - start_sec;
-            write_len -= write_offset;
-        }
 
         for(uint32_t i = 0; i < write_cnt; i++)
         {
-            memcpy(BspFlash_Cache_tmp + write_offset, p_data, write_len);
+            memcpy(&BspFlash_Cache_tmp[write_offset], p_data, write_len);
             
             /* wait for operation to be completed */
             status = flash_operation_wait_for(ERASE_TIMEOUT);
@@ -191,15 +190,15 @@ static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
                 }
             }
 
+            if (len <= write_len)
+                break;
+
             /* update section addr */
             start_sec = BspFlash_Get_Section_Addr(start_sec + write_len);
 
             write_offset = 0;
             len -= write_len;
             p_data += write_len;
-
-            if (len == 0)
-                break;
 
             if(len <= FLASH_SECTION_SIZE)
             {
@@ -219,7 +218,6 @@ static bool BspFlash_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
 static bool BspFlash_NoneCheck_Write(uint32_t addr, uint8_t *p_data, uint32_t len)
 {
     flash_status_type status = FLASH_OPERATE_BUSY;
-    volatile uint8_t test = 0;
 
     if ((addr >= FLASH_BASE) && ((addr + len) <= FLASH_BLOCK_END_ADDR) && p_data && len)
     {
@@ -236,8 +234,6 @@ static bool BspFlash_NoneCheck_Write(uint32_t addr, uint8_t *p_data, uint32_t le
 
         return true;
     }
-    else
-        test ++;
 
     return false;
 }

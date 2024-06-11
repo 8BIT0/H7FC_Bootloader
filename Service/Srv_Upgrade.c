@@ -181,7 +181,7 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
 
             file_size -= update_size;
             addr_offset += update_size;
-
+            
             if (file_size == 0)
             {
                 /* clear upgrade flag */
@@ -189,6 +189,7 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
                 Storage.update(Para_Boot, Monitor.UpgradeInfo_SO.item.data_addr, (uint8_t *)(&Info), sizeof(SrvUpgradeInfo_TypeDef));
                 
                 SrvUpgrade_Collect_Info("[ Upgrading Accomplished ]\r\n");
+                break;
             }
         }
     }
