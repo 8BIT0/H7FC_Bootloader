@@ -116,22 +116,14 @@ static bool SrvUpgrade_Init(uint32_t window_size)
     
     Monitor.JumpAddr = App_Address_Base;
     Monitor.AppSize  = App_Section_Size;
-    Monitor.jump_time = SrvOsCommon.get_os_ms();
-    Monitor.jump_time += DEFAULT_WINDOW_SIZE;
 
     /* show jump time stamp */
-    SrvUpgrade_Collect_Info("\tJump time: %d\r\n", Monitor.jump_time);
     SrvUpgrade_Collect_Info("\r\n");
     
     Monitor.init_state = true;
     Monitor.PollingState = Stage_Init;
     Monitor.PortDataState = PortProc_None;
     
-    /* 
-     * whatever on boot or app
-     * check upgrade on boot up
-     */
-    SrvUpgrade_CheckUpgrade_OnBootUp();
     return true;
 }
 
@@ -174,6 +166,7 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
             memset(upgrade_buf, 0, update_size);
             Storage.read_firmware(Firmware_App, addr_offset, upgrade_buf, update_size);
 
+            SrvUpgrade_Collect_Info("\t[ Upgrading Addr ] %04x\r\n", addr_offset);
             SrvOsCommon.enter_critical();
             /* write firmware to boot flash */
             Storage.write_firmware(Internal_Flash, Firmware_App, addr_offset, upgrade_buf, update_size);
@@ -203,13 +196,26 @@ static void SrvUpgrade_CheckUpgrade_OnBootUp(void)
 
     if (Monitor.UpgradeInfo_SO.item_addr == 0)
         Monitor.init_state = false;
+
+    if (Monitor.jump_time == 0)
+    {
+        Monitor.jump_time = SrvOsCommon.get_os_ms();
+        Monitor.jump_time += DEFAULT_WINDOW_SIZE;
+        SrvUpgrade_Collect_Info("\tJump time: %d\r\n", Monitor.jump_time);
+    }
 }
 
 static SrvUpgrade_Stage_List SrvUpgrade_StatePolling(uint32_t sys_time)
 {
+    /* 
+     * whatever on boot or app
+     * check upgrade on boot up
+     */
+    SrvUpgrade_CheckUpgrade_OnBootUp();
+
     switch ((uint8_t) Monitor.PollingState)
     {
-        case Stage_Init:            
+        case Stage_Init:
             Monitor.PollingState = Stage_Process_PortData;
             return Monitor.PollingState;
 
