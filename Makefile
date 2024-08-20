@@ -216,8 +216,10 @@ FPU = -mfpu=fpv5-d16
 else ifeq ($(BUILD_TYPE), $(HW_BATEAIO_AT32F435))
 C_DEFS = \
 -DBATEAT32F435_AIO \
--DAT32F435RGT7 \
+-DAT32F435xx 
 
+# fpu
+FPU = -mfpu=fpv4-sp-d16
 endif
 
 # float-abi
@@ -353,7 +355,7 @@ ifeq ($(BUILD_TYPE), $(HW_MATEK_STM32H743))
 OPENOCD := openocd -f interface/stlink.cfg \
         -f target/stm32h7x.cfg 
 else ifeq ($(BUILD_TYPE), $(HW_BATEAIO_AT32F435))
-OPENOCD := openocd_at32 -f interface/stlink.cfg \
+OPENOCD := openocd -f interface/stlink.cfg \
         -f target/at32f435xG.cfg 
 endif
 
