@@ -4,7 +4,7 @@
 #include "Srv_Upgrade.h"
 #include "../FCHW_Config.h"
 #include "DataPipe.h"
-#if defined AT32F435xx
+#if defined AT32F435_437
 #include "../HW_Lib/AT32F435/HW_Def.h"
 #elif defined STM32H743xx
 #include "../HW_Lib/STM32H7/HW_Def.h"

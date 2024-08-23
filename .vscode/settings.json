@@ -25,7 +25,8 @@
         "at32f435_437_dma.h": "c",
         "bsp_dma_port_def.h": "c",
         "util.h": "c",
-        "shell_port.h": "c"
+        "shell_port.h": "c",
+        "at32f435_437.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "cortex-debug.openocdPath": "D:\\software\\gcc\\tool-openocd-at32\\bin-windows_x86\\openocd_at32.exe",

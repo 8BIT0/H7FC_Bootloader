@@ -33,7 +33,7 @@ typedef struct
     uint32_t buffer_addr;
     uint32_t buffer_size;
 
-#if defined AT32F435xx
+#if defined AT32F435_437
     void *dma_callback_obj;
 #endif
 } BspTimerPWMObj_TypeDef;

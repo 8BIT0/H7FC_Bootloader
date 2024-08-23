@@ -607,7 +607,7 @@ bool DShot_Port_Init(void *obj, uint32_t prescaler, void *time_ins, uint32_t tim
 {
     if (obj && time_ins && pin)
     {
-#if defined AT32F435xx
+#if defined AT32F435_437
         To_DShot_Obj(obj)->pwm_obj.dma_callback_obj = SrvOsCommon.malloc(sizeof(BspDMA_IrqCall_Obj_TypeDef));
 #endif
 

@@ -216,7 +216,8 @@ FPU = -mfpu=fpv5-d16
 else ifeq ($(BUILD_TYPE), $(HW_BATEAIO_AT32F435))
 C_DEFS = \
 -DBATEAT32F435_AIO \
--DAT32F435xx 
+-DAT32F435_437 \
+-DAT32F435CGU7
 
 # fpu
 FPU = -mfpu=fpv4-sp-d16
